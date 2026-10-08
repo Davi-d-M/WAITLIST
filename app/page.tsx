@@ -26,6 +26,14 @@ const frequencies = [
 
 type SignupResult = { success?: boolean; serviceAreaStatus?: 'in_area' | 'outside_area' | 'unknown'; referralCode?: string; memberAccessToken?: string; error?: string };
 type Location = { country: string; county: string; city: string; area: string; verified: boolean; accuracy: number | null };
+type RewardPath = 'wine' | 'adventure' | 'music';
+declare global {
+  interface Window {
+    OnlineBarNative?: {
+      saveMemberProgress: (referralCode: string, memberAccessToken: string, ageGroup: string) => void;
+    };
+  }
+}
 type SiteContent = {
   eyebrow: string;
   headline: string;
@@ -64,9 +72,15 @@ const defaultSiteContent: SiteContent = {
 
 function getShareLabel(ageGroup: string) {
   if (ageGroup === '18_20' || ageGroup === '21_24') return 'Share the buzz';
-  if (ageGroup === '25_34') return 'Tell a friend';
+  if (ageGroup === '25_34' || ageGroup === '35_44') return 'Tell a friend';
   return 'Whisper to a friend';
 }
+
+const rewardPaths: Array<{ id: RewardPath; title: string; description: string; icon: string }> = [
+  { id: 'wine', title: 'Wine & good living', description: 'Wine tastings, special invitations and curated gifts.', icon: '🍷' },
+  { id: 'adventure', title: 'Adventure & experiences', description: 'A hosted adventure and a complimentary gift for you and a friend.', icon: '🌍' },
+  { id: 'music', title: 'Music & madness', description: 'A chance to win Soul Fest tickets and special access.', icon: '🎟️' }
+];
 
 function countdownParts(launchAt: string | null, now: number) {
   if (!launchAt) return null;
@@ -107,6 +121,7 @@ export default function Home() {
   const [consents, setConsents] = useState({ email: false, sms: false, whatsapp: false });
   const [preferredContactMethod, setPreferredContactMethod] = useState<'email' | 'sms' | 'whatsapp' | ''>('');
   const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
+  const [rewardPath, setRewardPath] = useState<RewardPath | ''>('');
   const [frequency, setFrequency] = useState('');
   const [ageConfirmed, setAgeConfirmed] = useState(false);
   const [website, setWebsite] = useState('');
@@ -116,6 +131,10 @@ export default function Home() {
   const [referralCode, setReferralCode] = useState('');
   const [memberAccessToken, setMemberAccessToken] = useState('');
   const [gpsStatus, setGpsStatus] = useState('');
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [shareLink, setShareLink] = useState('');
+  const [shareMessage, setShareMessage] = useState('');
+  const shareDialogCloseRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     void fetch('/api/content', { cache: 'no-store' })
@@ -143,6 +162,16 @@ export default function Home() {
     }
     return () => window.clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    if (!shareDialogOpen) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setShareDialogOpen(false);
+    };
+    window.addEventListener('keydown', closeOnEscape);
+    shareDialogCloseRef.current?.focus();
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, [shareDialogOpen]);
 
   useEffect(() => {
     if (!referralCode || step !== 3) return;
@@ -253,6 +282,10 @@ export default function Home() {
       setError('Choose your adult age range to join the list.');
       return;
     }
+    if (!rewardPath) {
+      setError('Choose the experience you are most excited about.');
+      return;
+    }
     setBusy(true);
     try {
       const query = new URLSearchParams(window.location.search);
@@ -276,6 +309,7 @@ export default function Home() {
           whatsappConsent: consents.whatsapp,
           preferredContactMethod,
           productInterests: selectedInterests,
+          rewardPath,
           orderFrequency: frequency,
           ageGroup,
           ageConfirmed,
@@ -295,6 +329,9 @@ export default function Home() {
       const accessToken = result.memberAccessToken || '';
       setMemberAccessToken(accessToken);
       if (accessToken) window.localStorage.setItem('waitlist-member-token', accessToken);
+      if (personalCode && accessToken) {
+        window.OnlineBarNative?.saveMemberProgress(personalCode, accessToken, ageGroup);
+      }
       setStep(3);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Your signup could not be saved. Please try again.');
@@ -327,16 +364,36 @@ export default function Home() {
       : [...current, interest]);
   };
 
-  const share = async () => {
+  const openShareChooser = () => {
     const url = new URL(`/invite/${encodeURIComponent(referralCode)}`, window.location.origin);
+    const text = ageGroup === '18_20' || ageGroup === '21_24'
+      ? `Share the buzz: join me on the Online Bar early-access list. My invite: ${url.toString()}`
+      : ageGroup === '45_plus'
+        ? `A little whisper for you: join me on the Online Bar early-access list. My invite: ${url.toString()}`
+        : `Tell a friend to join the Online Bar early-access waitlist. My invite: ${url.toString()}`;
+    setShareLink(url.toString());
+    setShareMessage(text);
+    setGpsStatus('');
+    setShareDialogOpen(true);
+  };
+  const copyShareMessage = async () => {
     try {
-      if (navigator.share) await navigator.share({ title: 'Online Bar early access', text: 'Join me on the Online Bar early-access list.', url: url.toString() });
-      else {
-        await navigator.clipboard.writeText(url.toString());
-        setGpsStatus('Your invite link was copied.');
-      }
+      await navigator.clipboard.writeText(shareMessage);
+      setGpsStatus('Your invite message and personal link are copied and ready to share.');
     } catch (cause) {
-      if (cause instanceof Error && cause.name !== 'AbortError') setGpsStatus('We could not share the link from this browser.');
+      console.error('[WaitlistSite] Could not copy the invite message:', cause);
+      setGpsStatus('We could not copy the invite. Allow clipboard access or copy your invite link manually.');
+    }
+  };
+  const shareToApp = async (app: 'instagram' | 'snapchat') => {
+    const appUrl = app === 'instagram' ? 'https://www.instagram.com/' : 'https://www.snapchat.com/';
+    window.open(appUrl, '_blank', 'noopener,noreferrer');
+    try {
+      await navigator.clipboard.writeText(shareMessage);
+      setGpsStatus(`Your invite is copied. Paste it into your ${app === 'instagram' ? 'Instagram message or story' : 'Snapchat chat'} to share.`);
+    } catch (cause) {
+      console.error(`[WaitlistSite] Could not copy the invite for ${app}:`, cause);
+      setGpsStatus(`Copy your invite link here, then paste it into ${app === 'instagram' ? 'Instagram' : 'Snapchat'}.`);
     }
   };
   const countdown = countdownParts(siteContent.launch_at, now);
@@ -418,6 +475,24 @@ export default function Home() {
               <label>Email address<input required type="email" autoComplete="email" value={email} onChange={event => setEmail(event.target.value)} placeholder="you@example.com" maxLength={254} /></label>
               <label>Phone number <span className="optional">OPTIONAL UNLESS YOU CHOOSE SMS / WHATSAPP</span><input type="tel" autoComplete="tel" value={phone} onChange={event => setPhone(event.target.value)} placeholder="+254 7XX XXX XXX" maxLength={32} /></label>
               <p className="inline-note">Age range selected: {selectedAgeGroup?.label}. Your age range is used for launch planning and personalized music.</p>
+              <fieldset className="reward-path-fieldset">
+                <legend>What are you here for? <span className="optional">CHOOSE YOUR EXPERIENCE</span></legend>
+                <div className="reward-path-grid">
+                  {rewardPaths.map(path => (
+                    <button
+                      aria-pressed={rewardPath === path.id}
+                      className={`reward-path-option${rewardPath === path.id ? ' selected' : ''}`}
+                      key={path.id}
+                      onClick={() => setRewardPath(path.id)}
+                      type="button"
+                    >
+                      <span className="reward-path-icon" aria-hidden="true">{path.icon}</span>
+                      <strong>{path.title}</strong>
+                      <small>{path.description}</small>
+                    </button>
+                  ))}
+                </div>
+              </fieldset>
               <fieldset><legend>How may we send your early-access update?</legend>
                 {(['email', 'sms', 'whatsapp'] as const).map(channel => <label className="check-row" key={channel}><input type="checkbox" checked={consents[channel]} onChange={event => setConsents(current => ({ ...current, [channel]: event.target.checked }))} /><span>{channel === 'email' ? 'Email' : channel === 'sms' ? 'SMS' : 'WhatsApp'} updates</span></label>)}
               </fieldset>
@@ -444,14 +519,66 @@ export default function Home() {
               : `We’ve recorded demand for ${resolvedArea}, ${resolvedCity}${landmark.trim() ? ` near ${landmark.trim()}` : ''}. We’re still confirming launch coverage, and we’ll share an update as soon as we know more.`}</p>
           <p className="success-copy">You’re now on the Online Bar early-access list. Keep an eye on the contact channel(s) you selected for your update.</p>
           {referralCode && <p className="referral">YOUR INVITE CODE <b>{referralCode}</b></p>}
+          {rewardPath && <p className="inline-note">Your experience: {rewardPaths.find(path => path.id === rewardPath)?.title}</p>}
           <p className="success-copy">Your unique link tracks friends who join. Each successful new signup earns you {siteContent.tokens_per_referral} tokens to put toward the souvenirs shown on the site. Install your countdown and referral dashboard on your phone’s home screen to keep your launch timer, joined-friend count and token balance close.</p>
           {referralCode && <div className="member-progress"><span>{memberProgress?.referralsJoined ?? '—'} FRIENDS JOINED</span><b>{memberProgress?.tokensAvailable ?? '—'} TOKENS READY</b></div>}
-          <button className="button button-primary" onClick={share}>{shareLabel} <span>↗</span></button>
+          <button className="button button-primary" onClick={openShareChooser}>{shareLabel} <span>↗</span></button>
           {referralCode && <Link className="button button-outline dashboard-link" href={widgetUrl}>Open my countdown &amp; token dashboard <span>↗</span></Link>}
           {memberProgress?.error && <p className="inline-note" role="status">{memberProgress.error}</p>}
         </section>
       )}
       </>}
+      {shareDialogOpen && (
+        <div className="share-dialog-backdrop" onClick={() => setShareDialogOpen(false)}>
+          <section
+            aria-labelledby="share-dialog-title"
+            aria-modal="true"
+            className="share-dialog"
+            onClick={event => event.stopPropagation()}
+            role="dialog"
+          >
+            <button
+              aria-label="Close sharing options"
+              className="share-dialog-close"
+              onClick={() => setShareDialogOpen(false)}
+              ref={shareDialogCloseRef}
+              type="button"
+            >×</button>
+            <p className="eyebrow"><span /> PASS THE GOOD TIMES ON</p>
+            <h2 id="share-dialog-title">{shareLabel}</h2>
+            <p className="share-dialog-copy">Choose where to send your personal invite. Your referral link stays attached.</p>
+            <div className="share-platform-grid">
+              <a href={`https://wa.me/?text=${encodeURIComponent(shareMessage)}`} rel="noreferrer" target="_blank">WhatsApp</a>
+              <button onClick={() => void shareToApp('instagram')} type="button">Instagram</button>
+              <a href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareMessage)}`} rel="noreferrer" target="_blank">X</a>
+              <button onClick={() => void shareToApp('snapchat')} type="button">Snapchat</button>
+              <a href={`https://t.me/share/url?url=${encodeURIComponent(shareLink)}&text=${encodeURIComponent(shareLabel)}`} rel="noreferrer" target="_blank">Telegram</a>
+              <a href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareLink)}`} rel="noreferrer" target="_blank">Facebook</a>
+              <a href={`mailto:?subject=${encodeURIComponent('Join me on Online Bar early access')}&body=${encodeURIComponent(shareMessage)}`}>Email</a>
+              <a href={`sms:?body=${encodeURIComponent(shareMessage)}`}>Text message</a>
+              {typeof navigator !== 'undefined' && navigator.share && (
+                <button
+                  className="share-platform-more"
+                  onClick={async () => {
+                    try {
+                      await navigator.share({ title: 'Online Bar early access', text: shareMessage, url: shareLink });
+                    } catch (cause) {
+                      if (cause instanceof Error && cause.name !== 'AbortError') {
+                        console.error('[WaitlistSite] Could not open the device share sheet:', cause);
+                        setGpsStatus('Your device sharing menu could not be opened. Choose an app above or copy your invite.');
+                      }
+                    }
+                  }}
+                  type="button"
+                >More apps…</button>
+              )}
+              <button className="share-platform-copy" onClick={() => void copyShareMessage()} type="button">Copy invite</button>
+            </div>
+            <p className="share-dialog-footnote">Instagram and Snapchat need you to paste the copied invite into your message or story. “More apps” opens sharing options supported by your phone.</p>
+            {gpsStatus && <p className="inline-note" role="status">{gpsStatus}</p>}
+          </section>
+        </div>
+      )}
       <footer className="site-footer"><span>ONLINE BAR</span><span>GOOD TIMES, DELIVERED.</span><a href="https://onlinebar.co.ke/privacy">PRIVACY</a></footer>
     </main>
   );

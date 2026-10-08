@@ -57,6 +57,7 @@ ALTER TABLE public.market_waitlist
     ADD COLUMN IF NOT EXISTS referred_by_code TEXT,
     ADD COLUMN IF NOT EXISTS campaign TEXT,
     ADD COLUMN IF NOT EXISTS landing_page TEXT,
+    ADD COLUMN IF NOT EXISTS reward_path TEXT,
     ADD COLUMN IF NOT EXISTS consent_version TEXT,
     ADD COLUMN IF NOT EXISTS unsubscribed_at TIMESTAMPTZ,
     ADD COLUMN IF NOT EXISTS age_group TEXT;
@@ -342,7 +343,10 @@ ALTER TABLE public.market_waitlist
         CHECK (order_frequency IS NULL OR order_frequency IN ('weekly', 'few_monthly', 'monthly', 'occasions', 'depends')),
     DROP CONSTRAINT IF EXISTS market_waitlist_age_group_check,
     ADD CONSTRAINT market_waitlist_age_group_check
-        CHECK (age_group IS NULL OR age_group IN ('18_20', '21_24', '25_34', '35_44', '45_plus'));
+        CHECK (age_group IS NULL OR age_group IN ('18_20', '21_24', '25_34', '35_44', '45_plus')),
+    DROP CONSTRAINT IF EXISTS market_waitlist_reward_path_check,
+    ADD CONSTRAINT market_waitlist_reward_path_check
+        CHECK (reward_path IS NULL OR reward_path IN ('wine', 'adventure', 'music'));
 
 CREATE INDEX IF NOT EXISTS market_waitlist_status_created_idx
     ON public.market_waitlist (status, created_at DESC);
@@ -350,6 +354,8 @@ CREATE INDEX IF NOT EXISTS market_waitlist_service_area_idx
     ON public.market_waitlist (service_area_status, country, county, city, area);
 CREATE INDEX IF NOT EXISTS market_waitlist_age_group_idx
     ON public.market_waitlist (age_group, created_at DESC);
+CREATE INDEX IF NOT EXISTS market_waitlist_reward_path_idx
+    ON public.market_waitlist (reward_path, created_at DESC);
 
 CREATE OR REPLACE FUNCTION public.get_waitlist_intelligence()
 RETURNS JSONB
@@ -381,6 +387,21 @@ AS $$
                 LEFT JOIN public.market_waitlist AS waitlist ON waitlist.age_group = bands.group_id
                 GROUP BY bands.group_id, bands.label, bands.sort_order
             ) AS age_bands
+        ),
+        'rewardPaths', (
+            SELECT jsonb_agg(jsonb_build_object('path', paths.path_id, 'label', paths.label, 'count', paths.member_count)
+                ORDER BY paths.sort_order)
+            FROM (
+                SELECT options.path_id, options.label, options.sort_order,
+                    count(waitlist.id)::BIGINT AS member_count
+                FROM (VALUES
+                    ('wine', 'Wine & good living', 1),
+                    ('adventure', 'Adventure & experiences', 2),
+                    ('music', 'Music & madness', 3)
+                ) AS options(path_id, label, sort_order)
+                LEFT JOIN public.market_waitlist AS waitlist ON waitlist.reward_path = options.path_id
+                GROUP BY options.path_id, options.label, options.sort_order
+            ) AS paths
         ),
         'areas', COALESCE((
             SELECT jsonb_agg(jsonb_build_object(

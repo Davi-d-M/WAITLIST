@@ -64,6 +64,7 @@ type SignupBody = {
   preferredContactMethod?: unknown;
   productInterests?: unknown;
   orderFrequency?: unknown;
+  rewardPath?: unknown;
   ageConfirmed?: unknown;
   ageGroup?: unknown;
   referralCode?: unknown;
@@ -212,6 +213,8 @@ export async function POST(request: Request) {
   const interests = Array.isArray(body.productInterests)
     ? body.productInterests.filter((value): value is string => typeof value === 'string' && allowedInterests.has(value)).slice(0, 9)
     : [];
+  const validRewardPaths = new Set(['wine', 'adventure', 'music']);
+  const rewardPath = text(body.rewardPath, 20);
   const frequency = text(body.orderFrequency, 30);
   const ageGroup = text(body.ageGroup, 20);
   const validAgeGroups = new Set(['18_20', '21_24', '25_34', '35_44', '45_plus']);
@@ -245,6 +248,9 @@ export async function POST(request: Request) {
   }
   if (!validAgeGroups.has(ageGroup)) {
     return NextResponse.json({ error: 'Choose an adult age range to join the list.' }, { status: 400 });
+  }
+  if (!validRewardPaths.has(rewardPath)) {
+    return NextResponse.json({ error: 'Choose the experience you are most excited about.' }, { status: 400 });
   }
 
   const database = createDatabase();
@@ -295,6 +301,7 @@ export async function POST(request: Request) {
     whatsapp_consent_at: whatsappConsent ? now : null,
     preferred_contact_method: contactMethod || null,
     product_interests: interests,
+    reward_path: rewardPath,
     order_frequency: frequency || null,
     age_group: ageGroup,
     age_confirmed: true,

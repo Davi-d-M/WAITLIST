@@ -20,7 +20,7 @@ async function getMemberFromToken(request: Request, database: NonNullable<Return
   if (!memberTokenPattern.test(token)) return { member: null, error: null };
   const tokenHash = createHash('sha256').update(token).digest('hex');
   const result = await database.from('market_waitlist')
-    .select('id,referral_code,age_group')
+    .select('id,referral_code,age_group,reward_path')
     .eq('member_access_token_hash', tokenHash)
     .limit(1)
     .maybeSingle();
@@ -52,6 +52,7 @@ export async function GET(request: Request) {
   return NextResponse.json({
     referralCode: member.referral_code,
     ageGroup: member.age_group,
+    rewardPath: member.reward_path,
     referralsJoined: (credits.data || []).length,
     tokensEarned: earned,
     tokensAvailable: Math.max(0, earned - spent),
