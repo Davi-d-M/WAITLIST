@@ -18,7 +18,7 @@ export async function GET() {
   }
   const database = createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
   const { data, error } = await database.from('waitlist_site_content')
-    .select('eyebrow,headline,intro,benefit_one,benefit_two,benefit_three,hero_image_url,hero_image_alt,age_group_tracks')
+    .select('eyebrow,headline,intro,benefit_one,benefit_two,benefit_three,hero_image_url,hero_image_alt,age_group_tracks,launch_at,tokens_per_referral')
     .eq('id', 'default')
     .maybeSingle();
   if (error) {
@@ -60,9 +60,20 @@ export async function GET() {
     benefit_two: data.benefit_two,
     benefit_three: data.benefit_three,
     hero_image_url: data.hero_image_url,
-    hero_image_alt: data.hero_image_alt
+    hero_image_alt: data.hero_image_alt,
+    launch_at: data.launch_at,
+    tokens_per_referral: data.tokens_per_referral
   };
-  return NextResponse.json({ content: { ...content, age_group_tracks: ageGroupTracks } }, {
+  const { data: rewards, error: rewardsError } = await database.from('waitlist_site_rewards')
+    .select('id,name,description,image_url,token_cost,sort_order')
+    .eq('is_active', true)
+    .order('sort_order')
+    .order('created_at');
+  if (rewardsError) {
+    console.error('[WaitlistSite] Could not load published souvenirs:', rewardsError);
+    return NextResponse.json({ error: 'Souvenir and widget content could not be loaded. Apply the waitlist site migration.' }, { status: 503 });
+  }
+  return NextResponse.json({ content: { ...content, age_group_tracks: ageGroupTracks }, rewards: rewards || [] }, {
     headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300' }
   });
 }

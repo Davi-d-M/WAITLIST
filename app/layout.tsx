@@ -3,7 +3,8 @@ import './globals.css';
 
 export const metadata: Metadata = {
   title: 'Online Bar | Early Access',
-  description: 'Join the Online Bar early-access list and be first to hear when we reach your area.'
+  description: 'Join the Online Bar early-access list, invite friends, earn tokens and see what you can redeem.',
+  manifest: '/manifest.webmanifest'
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

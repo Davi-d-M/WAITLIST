@@ -24,7 +24,7 @@ const frequencies = [
   ['depends', 'It depends']
 ];
 
-type SignupResult = { success?: boolean; serviceAreaStatus?: 'in_area' | 'outside_area' | 'unknown'; referralCode?: string; error?: string };
+type SignupResult = { success?: boolean; serviceAreaStatus?: 'in_area' | 'outside_area' | 'unknown'; referralCode?: string; memberAccessToken?: string; error?: string };
 type Location = { country: string; county: string; city: string; area: string; verified: boolean; accuracy: number | null };
 type SiteContent = {
   eyebrow: string;
@@ -36,7 +36,11 @@ type SiteContent = {
   hero_image_url: string | null;
   hero_image_alt: string;
   age_group_tracks: Record<string, { title: string; url: string }>;
+  launch_at: string | null;
+  tokens_per_referral: number;
 };
+type SiteReward = { id: string; name: string; description: string; image_url: string | null; token_cost: number; sort_order: number };
+type MemberProgress = { referralsJoined: number; tokensEarned: number; tokensAvailable: number; error?: string };
 const ageGroups = [
   { id: '18_20', label: '18–20' },
   { id: '21_24', label: '21–24' },
@@ -53,13 +57,38 @@ const defaultSiteContent: SiteContent = {
   benefit_three: 'Area-first delivery',
   hero_image_url: null,
   hero_image_alt: 'Online Bar early access',
-  age_group_tracks: {}
+  age_group_tracks: {},
+  launch_at: null,
+  tokens_per_referral: 10
 };
+
+function getShareLabel(ageGroup: string) {
+  if (ageGroup === '18_20' || ageGroup === '21_24') return 'Share the buzz';
+  if (ageGroup === '25_34') return 'Tell a friend';
+  return 'Whisper to a friend';
+}
+
+function countdownParts(launchAt: string | null, now: number) {
+  if (!launchAt) return null;
+  const remaining = new Date(launchAt).getTime() - now;
+  if (!Number.isFinite(remaining)) return null;
+  if (remaining <= 0) return { days: 0, hours: 0, minutes: 0, seconds: 0, launched: true };
+  return {
+    days: Math.floor(remaining / 86_400_000),
+    hours: Math.floor((remaining % 86_400_000) / 3_600_000),
+    minutes: Math.floor((remaining % 3_600_000) / 60_000),
+    seconds: Math.floor((remaining % 60_000) / 1000),
+    launched: false
+  };
+}
 
 export default function Home() {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [siteContent, setSiteContent] = useState<SiteContent>(defaultSiteContent);
   const [siteContentLoaded, setSiteContentLoaded] = useState(false);
+  const [siteRewards, setSiteRewards] = useState<SiteReward[]>([]);
+  const [memberProgress, setMemberProgress] = useState<MemberProgress | null>(null);
+  const [now, setNow] = useState(0);
   const [ageGateComplete, setAgeGateComplete] = useState(false);
   const [adultConfirmedAtEntry, setAdultConfirmedAtEntry] = useState(false);
   const [ageGroup, setAgeGroup] = useState('');
@@ -85,14 +114,16 @@ export default function Home() {
   const [error, setError] = useState('');
   const [serviceAreaStatus, setServiceAreaStatus] = useState<SignupResult['serviceAreaStatus']>('unknown');
   const [referralCode, setReferralCode] = useState('');
+  const [memberAccessToken, setMemberAccessToken] = useState('');
   const [gpsStatus, setGpsStatus] = useState('');
 
   useEffect(() => {
     void fetch('/api/content', { cache: 'no-store' })
       .then(async response => {
-        const result = await response.json() as { content?: SiteContent; error?: string };
+        const result = await response.json() as { content?: SiteContent; rewards?: SiteReward[]; error?: string };
         if (!response.ok || !result.content) throw new Error(result.error || 'Published content could not be loaded.');
         setSiteContent({ ...defaultSiteContent, ...result.content });
+        setSiteRewards(result.rewards || []);
       })
       .catch(cause => {
         console.error('[WaitlistSite] Using default landing page content:', cause);
@@ -101,6 +132,32 @@ export default function Home() {
         setSiteContentLoaded(true);
       });
   }, []);
+
+  useEffect(() => {
+    setNow(Date.now());
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    if ('serviceWorker' in navigator) {
+      void navigator.serviceWorker.register('/sw.js').catch(cause => {
+        console.error('[WaitlistSite] Could not register the home-screen dashboard:', cause);
+      });
+    }
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    if (!referralCode || step !== 3) return;
+    window.localStorage.setItem('waitlist-referral-code', referralCode);
+    if (!memberAccessToken) return;
+    void fetch('/api/member', { cache: 'no-store', headers: { Authorization: `Bearer ${memberAccessToken}` } })
+      .then(async response => {
+        const result = await response.json() as MemberProgress;
+        if (!response.ok) throw new Error(result.error || 'Your referral progress could not be loaded.');
+        setMemberProgress(result);
+      })
+      .catch(cause => {
+        console.error('[WaitlistSite] Could not load referral progress:', cause);
+      });
+  }, [memberAccessToken, referralCode, step]);
 
   const areas = useMemo(() => areasByCity[location.city]?.areas || [], [location.city]);
   const hasPhoneConsent = consents.sms || consents.whatsapp;
@@ -232,7 +289,12 @@ export default function Home() {
       const result = await response.json() as SignupResult;
       if (!response.ok) throw new Error(result.error || 'Your signup could not be saved.');
       setServiceAreaStatus(result.serviceAreaStatus || 'unknown');
-      setReferralCode(result.referralCode || '');
+      const personalCode = result.referralCode || '';
+      setReferralCode(personalCode);
+      if (personalCode) window.localStorage.setItem('waitlist-referral-code', personalCode);
+      const accessToken = result.memberAccessToken || '';
+      setMemberAccessToken(accessToken);
+      if (accessToken) window.localStorage.setItem('waitlist-member-token', accessToken);
       setStep(3);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Your signup could not be saved. Please try again.');
@@ -266,8 +328,7 @@ export default function Home() {
   };
 
   const share = async () => {
-    const url = new URL(window.location.href);
-    if (referralCode) url.searchParams.set('ref', referralCode);
+    const url = new URL(`/invite/${encodeURIComponent(referralCode)}`, window.location.origin);
     try {
       if (navigator.share) await navigator.share({ title: 'Online Bar early access', text: 'Join me on the Online Bar early-access list.', url: url.toString() });
       else {
@@ -278,6 +339,9 @@ export default function Home() {
       if (cause instanceof Error && cause.name !== 'AbortError') setGpsStatus('We could not share the link from this browser.');
     }
   };
+  const countdown = countdownParts(siteContent.launch_at, now);
+  const shareLabel = getShareLabel(ageGroup);
+  const widgetUrl = '/widget';
 
   return (
     <main className="site-shell">
@@ -310,10 +374,19 @@ export default function Home() {
             <h1>{siteContent.headline}</h1>
             <p className="hero-intro">{siteContent.intro}</p>
             <button className="button button-primary" onClick={() => setStep(1)}>Get early access <span>↗</span></button>
+            {countdown && <div className="countdown-strip"><b>{countdown.launched ? 'WE ARE LIVE' : 'LAUNCH COUNTDOWN'}</b><span>{countdown.launched ? 'The wait is over.' : `${countdown.days}d ${countdown.hours}h ${countdown.minutes}m ${countdown.seconds}s`}</span></div>}
+            <p className="inline-note">Join early to see the real souvenirs you can earn. Every friend who joins through your personal link earns {siteContent.tokens_per_referral} tokens toward available rewards.</p>
             <div className="benefits">{[siteContent.benefit_one, siteContent.benefit_two, siteContent.benefit_three].map(benefit => <span key={benefit}>✦ {benefit}</span>)}</div>
           </div>
           <div className={`hero-art${siteContent.hero_image_url ? ' has-photo' : ''}`} role="img" aria-label={siteContent.hero_image_url ? siteContent.hero_image_alt : 'Online Bar early access'} style={siteContent.hero_image_url ? { backgroundImage: `url("${siteContent.hero_image_url.replaceAll('"', '%22')}")` } : undefined}><div className="art-orbit orbit-one" /><div className="art-orbit orbit-two" /><div className="glass">✦</div><div className="art-label"><b>01</b><span>THE GOOD<br />STUFF IS NEAR</span></div><div className="art-note">FIRST IN.<br />FIRST POUR.</div></div>
           <footer className="hero-footer"><span>NAIROBI · KENYA</span><span>18+ · RESPONSIBLE ENJOYMENT</span><span>YOUR NEIGHBOURHOOD, NEXT</span></footer>
+        </section>
+      )}
+
+      {ageGateComplete && step === 0 && siteRewards.length > 0 && (
+        <section className="reward-preview" aria-label="Souvenirs you can earn">
+          <div><p className="eyebrow"><span /> EARLY-ACCESS SOUVENIRS</p><h2>See what your tokens can get you.</h2><p className="muted">Every valid friend who joins with your invite earns {siteContent.tokens_per_referral} tokens. Save up to request an available souvenir; rewards are limited and confirmed by our team.</p></div>
+          <div className="reward-grid">{siteRewards.map(reward => <article className="reward-card" key={reward.id}>{reward.image_url && <img src={reward.image_url} alt="" loading="lazy" />}<b>{reward.name}</b>{reward.description && <p>{reward.description}</p>}<span>{reward.token_cost} TOKENS TO REQUEST</span></article>)}</div>
         </section>
       )}
 
@@ -371,7 +444,11 @@ export default function Home() {
               : `We’ve recorded demand for ${resolvedArea}, ${resolvedCity}${landmark.trim() ? ` near ${landmark.trim()}` : ''}. We’re still confirming launch coverage, and we’ll share an update as soon as we know more.`}</p>
           <p className="success-copy">You’re now on the Online Bar early-access list. Keep an eye on the contact channel(s) you selected for your update.</p>
           {referralCode && <p className="referral">YOUR INVITE CODE <b>{referralCode}</b></p>}
-          <button className="button button-primary" onClick={share}>Invite a friend <span>↗</span></button>
+          <p className="success-copy">Your unique link tracks friends who join. Each successful new signup earns you {siteContent.tokens_per_referral} tokens to put toward the souvenirs shown on the site. Install your countdown and referral dashboard on your phone’s home screen to keep your launch timer, joined-friend count and token balance close.</p>
+          {referralCode && <div className="member-progress"><span>{memberProgress?.referralsJoined ?? '—'} FRIENDS JOINED</span><b>{memberProgress?.tokensAvailable ?? '—'} TOKENS READY</b></div>}
+          <button className="button button-primary" onClick={share}>{shareLabel} <span>↗</span></button>
+          {referralCode && <Link className="button button-outline dashboard-link" href={widgetUrl}>Open my countdown &amp; token dashboard <span>↗</span></Link>}
+          {memberProgress?.error && <p className="inline-note" role="status">{memberProgress.error}</p>}
         </section>
       )}
       </>}

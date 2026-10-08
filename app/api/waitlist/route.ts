@@ -1,3 +1,4 @@
+import { createHash, randomBytes } from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 
@@ -269,6 +270,7 @@ export async function POST(request: Request) {
   const existing = existingRows?.find(row =>
     row.city.toLowerCase() === city.toLowerCase() && row.area.toLowerCase() === area.toLowerCase()
   );
+  const memberAccessToken = randomBytes(32).toString('base64url');
   const newReferralCode = existing?.referral_code || `OB-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
   const values = {
     full_name: fullName || null,
@@ -299,6 +301,7 @@ export async function POST(request: Request) {
     age_confirmed_at: now,
     referral_code: newReferralCode,
     referred_by_code: text(body.referralCode, 40) || null,
+    member_access_token_hash: createHash('sha256').update(memberAccessToken).digest('hex'),
     campaign: text(body.campaign, 120) || null,
     landing_page: text(body.landingPage, 200) || '/',
     consent_version: 'waitlist-2026-01',
@@ -321,7 +324,7 @@ export async function POST(request: Request) {
     }
     return NextResponse.json({ error: 'Your signup could not be saved. Please try again.' }, { status: 503 });
   }
-  return NextResponse.json({ success: true, serviceAreaStatus, referralCode: newReferralCode }, {
+  return NextResponse.json({ success: true, serviceAreaStatus, referralCode: newReferralCode, memberAccessToken }, {
     headers: { 'Cache-Control': 'no-store' }
   });
 }

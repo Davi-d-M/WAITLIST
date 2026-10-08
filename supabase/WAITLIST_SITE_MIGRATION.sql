@@ -61,6 +61,9 @@ ALTER TABLE public.market_waitlist
     ADD COLUMN IF NOT EXISTS unsubscribed_at TIMESTAMPTZ,
     ADD COLUMN IF NOT EXISTS age_group TEXT;
 
+ALTER TABLE public.market_waitlist
+    ADD COLUMN IF NOT EXISTS member_access_token_hash TEXT;
+
 CREATE UNIQUE INDEX IF NOT EXISTS market_waitlist_email_area_uidx
     ON public.market_waitlist (lower(email), lower(city), lower(area));
 CREATE INDEX IF NOT EXISTS market_waitlist_location_created_idx
@@ -82,11 +85,18 @@ CREATE TABLE IF NOT EXISTS public.waitlist_site_content (
     hero_image_path TEXT,
     hero_image_alt TEXT NOT NULL DEFAULT 'Online Bar early access',
     age_group_tracks JSONB NOT NULL DEFAULT '{}'::JSONB,
+    launch_at TIMESTAMPTZ,
+    tokens_per_referral INTEGER NOT NULL DEFAULT 10,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 ALTER TABLE public.waitlist_site_content
-    ADD COLUMN IF NOT EXISTS age_group_tracks JSONB NOT NULL DEFAULT '{}'::JSONB;
+    ADD COLUMN IF NOT EXISTS age_group_tracks JSONB NOT NULL DEFAULT '{}'::JSONB,
+    ADD COLUMN IF NOT EXISTS launch_at TIMESTAMPTZ,
+    ADD COLUMN IF NOT EXISTS tokens_per_referral INTEGER NOT NULL DEFAULT 10,
+    DROP CONSTRAINT IF EXISTS waitlist_site_content_tokens_per_referral_check,
+    ADD CONSTRAINT waitlist_site_content_tokens_per_referral_check
+        CHECK (tokens_per_referral BETWEEN 1 AND 1000);
 
 ALTER TABLE public.waitlist_site_content ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.waitlist_site_content FROM PUBLIC, anon, authenticated;
@@ -96,10 +106,173 @@ INSERT INTO public.waitlist_site_content (id)
 VALUES ('default')
 ON CONFLICT (id) DO NOTHING;
 
+CREATE TABLE IF NOT EXISTS public.waitlist_site_rewards (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name TEXT NOT NULL,
+    description TEXT NOT NULL DEFAULT '',
+    image_url TEXT,
+    image_path TEXT,
+    token_cost INTEGER NOT NULL DEFAULT 10 CHECK (token_cost BETWEEN 1 AND 1000000),
+    is_active BOOLEAN NOT NULL DEFAULT true,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.waitlist_referral_credits (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    referrer_id UUID NOT NULL REFERENCES public.market_waitlist(id) ON DELETE CASCADE,
+    invitee_id UUID NOT NULL UNIQUE REFERENCES public.market_waitlist(id) ON DELETE CASCADE,
+    token_amount INTEGER NOT NULL CHECK (token_amount > 0),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CHECK (referrer_id <> invitee_id)
+);
+
+CREATE INDEX IF NOT EXISTS waitlist_referral_credits_referrer_idx
+    ON public.waitlist_referral_credits (referrer_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS public.waitlist_reward_claims (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    referrer_id UUID NOT NULL REFERENCES public.market_waitlist(id) ON DELETE CASCADE,
+    reward_id UUID NOT NULL REFERENCES public.waitlist_site_rewards(id) ON DELETE RESTRICT,
+    tokens_spent INTEGER NOT NULL CHECK (tokens_spent > 0),
+    status TEXT NOT NULL DEFAULT 'pending'
+        CHECK (status IN ('pending', 'approved', 'rejected')),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS waitlist_reward_claims_member_idx
+    ON public.waitlist_reward_claims (referrer_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS waitlist_reward_claims_status_idx
+    ON public.waitlist_reward_claims (status, created_at DESC);
+
+ALTER TABLE public.waitlist_site_rewards ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.waitlist_referral_credits ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.waitlist_reward_claims ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.waitlist_site_rewards, public.waitlist_referral_credits, public.waitlist_reward_claims
+    FROM PUBLIC, anon, authenticated;
+GRANT ALL ON public.waitlist_site_rewards, public.waitlist_referral_credits, public.waitlist_reward_claims
+    TO service_role;
+
+CREATE OR REPLACE FUNCTION public.credit_waitlist_referral()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    referrer UUID;
+    token_value INTEGER;
+BEGIN
+    IF NEW.referred_by_code IS NULL OR btrim(NEW.referred_by_code) = '' THEN
+        RETURN NEW;
+    END IF;
+
+    SELECT member.id INTO referrer
+    FROM public.market_waitlist AS member
+    WHERE upper(member.referral_code) = upper(NEW.referred_by_code)
+      AND lower(member.email) <> lower(NEW.email)
+      AND member.id <> NEW.id
+      AND NOT EXISTS (
+          SELECT 1 FROM public.market_waitlist AS prior_signup
+          WHERE prior_signup.id <> NEW.id
+            AND lower(prior_signup.email) = lower(NEW.email)
+      )
+    ORDER BY member.created_at
+    LIMIT 1;
+
+    IF referrer IS NULL THEN
+        RETURN NEW;
+    END IF;
+
+    SELECT tokens_per_referral INTO token_value
+    FROM public.waitlist_site_content
+    WHERE id = 'default';
+
+    INSERT INTO public.waitlist_referral_credits (referrer_id, invitee_id, token_amount)
+    VALUES (referrer, NEW.id, COALESCE(token_value, 10))
+    ON CONFLICT (invitee_id) DO NOTHING;
+
+    RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS market_waitlist_referral_credit ON public.market_waitlist;
+CREATE TRIGGER market_waitlist_referral_credit
+    AFTER INSERT ON public.market_waitlist
+    FOR EACH ROW
+    EXECUTE FUNCTION public.credit_waitlist_referral();
+
+CREATE OR REPLACE FUNCTION public.request_waitlist_reward(p_referral_code TEXT, p_reward_id UUID)
+RETURNS UUID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    member_id UUID;
+    required_tokens INTEGER;
+    available_tokens BIGINT;
+    claim_id UUID;
+BEGIN
+    SELECT id INTO member_id
+    FROM public.market_waitlist
+    WHERE upper(referral_code) = upper(btrim(p_referral_code))
+    ORDER BY created_at
+    LIMIT 1
+    FOR UPDATE;
+
+    IF member_id IS NULL THEN
+        RAISE EXCEPTION 'Referral link was not found.';
+    END IF;
+
+    SELECT token_cost INTO required_tokens
+    FROM public.waitlist_site_rewards
+    WHERE id = p_reward_id AND is_active = true;
+
+    IF required_tokens IS NULL THEN
+        RAISE EXCEPTION 'This souvenir is not available right now.';
+    END IF;
+
+    SELECT COALESCE((SELECT sum(token_amount) FROM public.waitlist_referral_credits WHERE referrer_id = member_id), 0)
+        - COALESCE((SELECT sum(tokens_spent) FROM public.waitlist_reward_claims
+                    WHERE referrer_id = member_id AND status IN ('pending', 'approved')), 0)
+    INTO available_tokens;
+
+    IF available_tokens < required_tokens THEN
+        RAISE EXCEPTION 'You need % more tokens to request this souvenir.', required_tokens - available_tokens;
+    END IF;
+
+    INSERT INTO public.waitlist_reward_claims (referrer_id, reward_id, tokens_spent)
+    VALUES (member_id, p_reward_id, required_tokens)
+    RETURNING id INTO claim_id;
+
+    RETURN claim_id;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.credit_waitlist_referral() FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.request_waitlist_reward(TEXT, UUID) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.request_waitlist_reward(TEXT, UUID) TO service_role;
+
 INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 VALUES (
     'waitlist-site-images',
     'waitlist-site-images',
+    true,
+    6291456,
+    ARRAY['image/jpeg', 'image/png', 'image/webp', 'image/avif']
+)
+ON CONFLICT (id) DO UPDATE
+SET public = true,
+    file_size_limit = 6291456,
+    allowed_mime_types = EXCLUDED.allowed_mime_types;
+
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES (
+    'waitlist-site-rewards',
+    'waitlist-site-rewards',
     true,
     6291456,
     ARRAY['image/jpeg', 'image/png', 'image/webp', 'image/avif']
@@ -143,6 +316,16 @@ BEGIN
         CREATE POLICY "Public read waitlist site audio"
             ON storage.objects FOR SELECT TO anon, authenticated
             USING (bucket_id = 'waitlist-site-audio');
+    END IF;
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_policies
+        WHERE schemaname = 'storage'
+          AND tablename = 'objects'
+          AND policyname = 'Public read waitlist site rewards'
+    ) THEN
+        CREATE POLICY "Public read waitlist site rewards"
+            ON storage.objects FOR SELECT TO anon, authenticated
+            USING (bucket_id = 'waitlist-site-rewards');
     END IF;
 END;
 $$;
