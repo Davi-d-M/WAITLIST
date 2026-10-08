@@ -372,7 +372,6 @@ export default function Home() {
           <p className="success-copy">You’re now on the Online Bar early-access list. Keep an eye on the contact channel(s) you selected for your update.</p>
           {referralCode && <p className="referral">YOUR INVITE CODE <b>{referralCode}</b></p>}
           <button className="button button-primary" onClick={share}>Invite a friend <span>↗</span></button>
-          {gpsStatus && <p className="inline-note" role="status">{gpsStatus}</p>}
         </section>
       )}
       </>}
