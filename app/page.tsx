@@ -322,7 +322,7 @@ export default function Home() {
           <div className="form-aside"><p className="eyebrow"><span /> YOUR EARLY ACCESS</p><h1>{step === 1 ? 'First, your neighbourhood.' : 'Make it yours.'}</h1><p>We’re opening in selected areas first. Your area helps us plan where to go next.</p><div className="steps"><span className={step === 1 ? 'current' : 'complete'}>01</span><i /><span className={step === 2 ? 'current' : ''}>02</span><i /><span>03</span></div><small>LOCATION <b>·</b> YOUR DETAILS <b>·</b> YOU’RE IN</small></div>
           {step === 1 ? (
             <div className="form-card">
-              <p className="eyebrow">STEP 01 — DELIVERY AREA</p><h2>Where should we deliver?</h2><p className="muted">Share an approximate location or enter your area. GPS is optional.</p>
+              <p className="eyebrow">STEP 01 — DELIVERY AREA</p><h2>Where should we deliver?</h2>              <p className="muted">Tell us your neighbourhood and a nearby landmark so we can plan where to launch next. GPS is optional.</p>
               <button type="button" className="button button-outline" onClick={requestLocation} disabled={busy}>⌖ {busy ? 'Finding your area…' : 'Use my current location'}</button>
               {gpsStatus && <p className="inline-note" role="status">{gpsStatus}</p>}
               <div className="divider"><span>OR ENTER IT YOURSELF</span></div>
@@ -333,14 +333,14 @@ export default function Home() {
               </>}
               {areas.length > 0 && <label>Estate / neighbourhood<select value={location.area} onChange={event => setManualArea(event.target.value)}><option value="">Choose an area</option>{areas.map(area => <option key={area}>{area}</option>)}</select></label>}
               <label>Enter an area {areas.length ? <span className="optional">(or add a more specific estate)</span> : null}<input value={customArea} onChange={event => { setCustomArea(event.target.value); if (event.target.value) setLocation(current => ({ ...current, verified: false, accuracy: null })); }} placeholder="e.g. Westlands, Kilimani, Nyali" maxLength={100} /></label>
-              <label>Nearby landmark <span className="optional">OPTIONAL</span><input value={landmark} onChange={event => setLandmark(event.target.value)} placeholder="A nearby place to help us understand demand" maxLength={120} /></label>
+              <label>Nearby landmark <span className="optional">OPTIONAL</span><input value={landmark} onChange={event => setLandmark(event.target.value)} placeholder="e.g. Sarit Centre, Westlands" maxLength={120} /></label>
               <p className="privacy-note">We use your area to plan launch availability. Exact GPS coordinates are used only to find an approximate area and are not saved.</p>
               <button className="button button-primary full" disabled={busy || !resolvedArea || !resolvedCity || !location.county.trim()} onClick={() => setStep(2)}>Continue <span>→</span></button>
               {error && <p className="error" role="alert">{error}</p>}
             </div>
           ) : (
             <form className="form-card" onSubmit={submit}>
-              <p className="eyebrow">STEP 02 — YOUR INVITATION</p><h2>Where should we reach you?</h2><p className="muted">For {resolvedArea}, {location.city}. Outside our first areas? Join anyway — we’re listening.</p>
+              <p className="eyebrow">STEP 02 — YOUR INVITATION</p><h2>Where should we reach you?</h2>              <p className="muted">For {resolvedArea}, {location.city}. Already in our launch coverage? Join and wait for your launch update. Not there yet? Join anyway — we’re coming soon and your area helps us plan.</p>
               <label>Your name<input autoComplete="name" value={fullName} onChange={event => setFullName(event.target.value)} placeholder="Name" maxLength={120} /></label>
               <label>Email address<input required type="email" autoComplete="email" value={email} onChange={event => setEmail(event.target.value)} placeholder="you@example.com" maxLength={254} /></label>
               <label>Phone number <span className="optional">OPTIONAL UNLESS YOU CHOOSE SMS / WHATSAPP</span><input type="tel" autoComplete="tel" value={phone} onChange={event => setPhone(event.target.value)} placeholder="+254 7XX XXX XXX" maxLength={32} /></label>
@@ -364,8 +364,12 @@ export default function Home() {
       {step === 3 && (
         <section className="success-card">
           <div className="success-icon">✦</div><p className="eyebrow">YOU’RE ON THE LIST</p><h1>You’re in.<br /><em>Cheers.</em></h1>
-          <p className="success-copy">{serviceAreaStatus === 'in_area' ? `We’re planning for ${resolvedArea}, ${resolvedCity}. You’ll hear from us before we open there.` : serviceAreaStatus === 'outside_area' ? `${resolvedArea}, ${resolvedCity} is outside our currently configured launch areas, but we’ve recorded the demand and will keep you posted.` : `We’ve recorded demand for ${resolvedArea}, ${resolvedCity}. We’ll confirm availability as launch areas are finalized.`}</p>
-          <p className="success-copy">You’re now on the Online Bar early-access list. Keep an eye on the contact channel(s) you selected.</p>
+          <p className="success-copy">{serviceAreaStatus === 'in_area'
+            ? `Good news — ${resolvedArea}, ${resolvedCity} is in our current launch coverage. We’re getting ready to serve your area, so stay on the list and watch for your launch and early-access update.`
+            : serviceAreaStatus === 'outside_area'
+              ? `We’re not serving ${resolvedArea}, ${resolvedCity} just yet, but we’re coming soon. We’ve recorded your area${landmark.trim() ? ` near ${landmark.trim()}` : ''} to help us plan where to expand next, and we’ll keep you posted.`
+              : `We’ve recorded demand for ${resolvedArea}, ${resolvedCity}${landmark.trim() ? ` near ${landmark.trim()}` : ''}. We’re still confirming launch coverage, and we’ll share an update as soon as we know more.`}</p>
+          <p className="success-copy">You’re now on the Online Bar early-access list. Keep an eye on the contact channel(s) you selected for your update.</p>
           {referralCode && <p className="referral">YOUR INVITE CODE <b>{referralCode}</b></p>}
           <button className="button button-primary" onClick={share}>Invite a friend <span>↗</span></button>
           {gpsStatus && <p className="inline-note" role="status">{gpsStatus}</p>}
