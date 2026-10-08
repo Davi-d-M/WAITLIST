@@ -35,6 +35,12 @@ const areas = [
 const attempts = new Map<string, { since: number; count: number }>();
 const maxAttempts = 12;
 const windowMs = 15 * 60 * 1000;
+const defaultLaunchAreas = [
+  'CBD', 'Westlands', 'Kilimani', 'Lavington', 'Kileleshwa', 'Karen', 'Langata',
+  'South C', 'South B', 'Embakasi', 'Roysambu', 'Kasarani', 'Kahawa', 'Githurai',
+  'Zimmerman', 'Utawala', 'Syokimau', 'Kitengela', 'Rongai', 'Ngong', 'Kikuyu',
+  'Thika Road', 'Mombasa Road'
+];
 
 type SignupBody = {
   action?: unknown;
@@ -116,19 +122,26 @@ function distanceKm(latitude: number, longitude: number, target: typeof areas[nu
 
 async function resolveServiceArea(database: NonNullable<ReturnType<typeof createDatabase>>, area: string) {
   const environmentAreas = process.env.WAITLIST_LAUNCH_AREAS?.split(',').map(value => value.trim()).filter(Boolean);
-  let launchAreas = environmentAreas || [];
+  let launchAreas = environmentAreas?.length ? environmentAreas : defaultLaunchAreas;
   if (!environmentAreas?.length) {
-    const { data, error } = await database.from('settings').select('value').eq('key', 'logistics').maybeSingle();
+    const { data, error } = await database.from('settings').select('value')
+      .eq('key', 'logistics')
+      .eq('is_published', true)
+      .maybeSingle();
     if (error) {
-      if (error.code === '42P01' || error.code === 'PGRST205') return 'unknown' as const;
-      console.error('[Waitlist] Could not read configured launch areas:', error.message);
-      throw new Error('Launch-area configuration could not be checked.');
-    }
-    const configured = data?.value && typeof data.value === 'object'
-      ? (data.value as { dispatch_zones?: unknown }).dispatch_zones
-      : null;
-    if (Array.isArray(configured) && configured.every(value => typeof value === 'string')) {
-      launchAreas = configured as string[];
+      if (error.code === '42P01' || error.code === 'PGRST205') {
+        console.warn('[Waitlist] Published logistics settings are unavailable; using the storefront default launch areas.');
+      } else {
+        console.error('[Waitlist] Could not read configured launch areas:', error.message);
+        throw new Error('Launch-area configuration could not be checked.');
+      }
+    } else if (data) {
+      const configured = data.value && typeof data.value === 'object'
+        ? (data.value as { dispatch_zones?: unknown }).dispatch_zones
+        : null;
+      if (Array.isArray(configured) && configured.every(value => typeof value === 'string')) {
+        launchAreas = configured as string[];
+      }
     }
   }
   if (!launchAreas.length) return 'unknown' as const;
