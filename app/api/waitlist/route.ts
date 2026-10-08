@@ -77,6 +77,17 @@ function createDatabase() {
   return createClient(url, serviceKey, { auth: { autoRefreshToken: false, persistSession: false } });
 }
 
+function missingDatabaseConfiguration() {
+  const missing = [
+    !process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() && 'NEXT_PUBLIC_SUPABASE_URL',
+    !process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() && 'SUPABASE_SERVICE_ROLE_KEY'
+  ].filter((name): name is string => Boolean(name));
+  console.error(`[Waitlist] Missing server environment variables: ${missing.join(', ')}`);
+  return NextResponse.json({
+    error: `Waitlist storage is not configured. Add ${missing.join(' and ')} to this Vercel project's Environment Variables for Production, then redeploy.`
+  }, { status: 503 });
+}
+
 function rateLimited(request: Request) {
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
     || request.headers.get('x-real-ip')
@@ -223,7 +234,7 @@ export async function POST(request: Request) {
   }
 
   const database = createDatabase();
-  if (!database) return NextResponse.json({ error: 'Waitlist storage is not configured on this website.' }, { status: 503 });
+  if (!database) return missingDatabaseConfiguration();
   let serviceAreaStatus: 'in_area' | 'outside_area' | 'unknown';
   try {
     serviceAreaStatus = await resolveServiceArea(database, area);
