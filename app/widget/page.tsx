@@ -238,6 +238,10 @@ export default function WaitlistWidgetPage() {
         })}</div>}
       </section>
       {!!progress.claims.length && <section className="widget-claims"><h2>Your souvenir requests</h2><ul>{progress.claims.map(claim => <li key={claim.id}><b>{rewards.find(reward => reward.id === claim.reward_id)?.name || 'Souvenir'}</b><span>{claim.tokens_spent} tokens · {claim.status}</span></li>)}</ul></section>}
+      <aside className="support-cta">
+        <div><p className="eyebrow"><span /> NEED A HAND?</p><p>Need help with your invite, tokens or rewards? Message our support team on WhatsApp.</p></div>
+        <a href="https://wa.me/254769345599?text=Hi%20Online%20Bar%2C%20I%20need%20support%20with%20my%20early-access%20account." rel="noreferrer" target="_blank">WhatsApp support · 07 69345599 <span aria-hidden="true">↗</span></a>
+      </aside>
       <footer className="site-footer"><Link href="/">ONLINE BAR</Link><span>YOUR INVITE CODE · {progress.referralCode}</span><span>GOOD TIMES, DELIVERED.</span></footer>
       {shareDialogOpen && <div className="share-dialog-backdrop" onClick={() => setShareDialogOpen(false)}>
         <section aria-labelledby="widget-share-title" aria-modal="true" className="share-dialog" onClick={event => event.stopPropagation()} role="dialog">

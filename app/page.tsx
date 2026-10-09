@@ -883,6 +883,10 @@ export default function Home() {
           </section>
         </div>
       )}
+      <aside className="support-cta">
+        <div><p className="eyebrow"><span /> NEED A HAND?</p><p>Questions about early access? Message our support team on WhatsApp.</p></div>
+        <a href="https://wa.me/254769345599?text=Hi%20Online%20Bar%2C%20I%20need%20support%20with%20the%20early-access%20waitlist." rel="noreferrer" target="_blank">WhatsApp support · 07 69345599 <span aria-hidden="true">↗</span></a>
+      </aside>
       <footer className="site-footer"><span>ONLINE BAR</span><span>GOOD TIMES, DELIVERED.</span><a href="https://onlinebar.co.ke/privacy">PRIVACY</a></footer>
     </main>
   );
