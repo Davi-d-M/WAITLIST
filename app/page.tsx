@@ -98,6 +98,7 @@ function countdownParts(launchAt: string | null, now: number) {
 
 export default function Home() {
   const audioRef = useRef<HTMLAudioElement>(null);
+  const musicFadeRef = useRef<number | null>(null);
   const [siteContent, setSiteContent] = useState<SiteContent>(defaultSiteContent);
   const [siteContentLoaded, setSiteContentLoaded] = useState(false);
   const [siteRewards, setSiteRewards] = useState<SiteReward[]>([]);
@@ -163,6 +164,10 @@ export default function Home() {
     return () => window.clearInterval(timer);
   }, []);
 
+  useEffect(() => () => {
+    if (musicFadeRef.current !== null) window.clearInterval(musicFadeRef.current);
+  }, []);
+
   useEffect(() => {
     if (!shareDialogOpen) return;
     const closeOnEscape = (event: KeyboardEvent) => {
@@ -196,15 +201,35 @@ export default function Home() {
   const selectedAgeGroup = ageGroups.find(group => group.id === ageGroup);
   const currentAgeTrack = ageGroup ? siteContent.age_group_tracks[ageGroup] : undefined;
 
+  const startMusic = (audio: HTMLAudioElement, trackUrl?: string) => {
+    if (musicFadeRef.current !== null) window.clearInterval(musicFadeRef.current);
+    musicFadeRef.current = null;
+    if (trackUrl) audio.src = trackUrl;
+    audio.volume = 0.03;
+    void audio.play()
+      .then(() => {
+        setMusicPlaying(true);
+        musicFadeRef.current = window.setInterval(() => {
+          const nextVolume = Math.min(audio.volume + 0.015, 0.3);
+          audio.volume = nextVolume;
+          if (nextVolume >= 0.3 && musicFadeRef.current !== null) {
+            window.clearInterval(musicFadeRef.current);
+            musicFadeRef.current = null;
+          }
+        }, 400);
+      })
+      .catch(() => {
+        setMusicPlaying(false);
+        setMusicNotice('Tap “Play music” to start your age-group track.');
+      });
+  };
+
   const enterSite = () => {
     if (!selectedAgeGroup || !adultConfirmedAtEntry) return;
     setAgeGateComplete(true);
     setMusicNotice('');
     if (currentAgeTrack && audioRef.current) {
-      audioRef.current.src = currentAgeTrack.url;
-      void audioRef.current.play()
-        .then(() => setMusicPlaying(true))
-        .catch(() => setMusicNotice('Tap “Play music” to start your age-group track.'));
+      startMusic(audioRef.current, currentAgeTrack.url);
     }
   };
 
@@ -212,14 +237,14 @@ export default function Home() {
     const audio = audioRef.current;
     if (!audio) return;
     if (musicPlaying) {
+      if (musicFadeRef.current !== null) window.clearInterval(musicFadeRef.current);
+      musicFadeRef.current = null;
       audio.pause();
       setMusicPlaying(false);
       return;
     }
     setMusicNotice('');
-    void audio.play()
-      .then(() => setMusicPlaying(true))
-      .catch(() => setMusicNotice('This track could not be played in your browser.'));
+    startMusic(audio);
   };
 
   const requestLocation = () => {
@@ -403,7 +428,11 @@ export default function Home() {
   return (
     <main className="site-shell">
       <nav className="topbar"><Link className="brand" href="/" aria-label="Online Bar home"><span className="brand-mark">OB</span><span>ONLINE BAR<span className="brand-sub">GOOD TIMES, DELIVERED</span></span></Link><span className="top-status"><i /> EARLY ACCESS</span></nav>
-      <audio ref={audioRef} loop preload="none" onEnded={() => setMusicPlaying(false)} />
+      <audio ref={audioRef} loop preload="none" onEnded={() => {
+        if (musicFadeRef.current !== null) window.clearInterval(musicFadeRef.current);
+        musicFadeRef.current = null;
+        setMusicPlaying(false);
+      }} />
       {!ageGateComplete && (
         <section className="age-gate">
           <p className="eyebrow"><span /> ONLINE BAR EARLY ACCESS</p>
@@ -411,7 +440,7 @@ export default function Home() {
           <p>This experience is for adults of legal drinking age. Choose an age range; we do not ask for your date of birth. Your range is only saved if you join the waitlist.</p>
           <label className="age-gate-select">Your age range<select value={ageGroup} onChange={event => setAgeGroup(event.target.value)}><option value="">Choose an adult age range</option>{ageGroups.map(group => <option key={group.id} value={group.id}>{group.label}</option>)}</select></label>
           <label className="check-row age-row"><input type="checkbox" checked={adultConfirmedAtEntry} onChange={event => setAdultConfirmedAtEntry(event.target.checked)} /><span>I confirm I am 18 or older.</span></label>
-          <p className="privacy-note">Music starts only after you choose your age range and continue. You can pause it anytime.</p>
+          <p className="privacy-note">Music starts softly after you continue, then gradually gets louder. You can pause it anytime.</p>
           <button className="button button-primary" disabled={!siteContentLoaded || !ageGroup || !adultConfirmedAtEntry} onClick={enterSite}>{siteContentLoaded ? 'Enter & play' : 'Loading…'} <span>↗</span></button>
           {!currentAgeTrack && siteContentLoaded && <p className="inline-note">No track is assigned to this age range yet. You can still continue.</p>}
         </section>

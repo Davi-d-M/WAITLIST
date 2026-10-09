@@ -12,6 +12,8 @@ This folder is an independently deployable Next.js site. It uses the same Supaba
 
 The standalone application lives in this repository. It writes member signups, selected experience paths, referral credits and souvenir requests to the shared Supabase project; Online Bar Admin reads those same records. Keep the site and Admin deployments on the same Supabase project and run this repository's migration before launch. The Admin remains in the Online Bar repository; the customer-facing waitlist does not.
 
+Waitlist music starts at low volume and fades up gradually after the visitor confirms their age and enters the site. Signup requires an experience choice (wine tastings and gifts, hosted adventures, or the Soul Fest ticket draw); each choice is saved to `market_waitlist.reward_path` for the Admin signup list and experience summaries.
+
 ## Invites, tokens and souvenirs
 
 Each member receives a short link in the form `/invite/OB-XXXXXXXX`. A newly inserted signup with a valid, different member's invite code earns that inviter the configured token amount. The database records at most one credit per new waitlist row and blocks self-referrals and repeat-email credits. Returning signups do not create extra referral credits.

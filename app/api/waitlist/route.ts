@@ -326,7 +326,7 @@ export async function POST(request: Request) {
     console.error('[Waitlist] Could not save signup:', result.error);
     if (result.error.code === '42P01' || result.error.code === 'PGRST205' || result.error.code === '42703') {
       return NextResponse.json({
-        error: 'The shared waitlist database has not been upgraded yet. Apply waitlist-site/supabase/WAITLIST_SITE_MIGRATION.sql after DEMAND_INTELLIGENCE_MIGRATION.sql.'
+        error: 'The shared waitlist database has not been upgraded yet. Apply supabase/WAITLIST_SITE_MIGRATION.sql after DEMAND_INTELLIGENCE_MIGRATION.sql.'
       }, { status: 503 });
     }
     return NextResponse.json({ error: 'Your signup could not be saved. Please try again.' }, { status: 503 });

@@ -395,9 +395,9 @@ AS $$
                 SELECT options.path_id, options.label, options.sort_order,
                     count(waitlist.id)::BIGINT AS member_count
                 FROM (VALUES
-                    ('wine', 'Wine & good living', 1),
-                    ('adventure', 'Adventure & experiences', 2),
-                    ('music', 'Music & madness', 3)
+                    ('wine', 'Wine tastings & curated gifts', 1),
+                    ('adventure', 'Hosted adventures for two', 2),
+                    ('music', 'Soul Fest ticket draw', 3)
                 ) AS options(path_id, label, sort_order)
                 LEFT JOIN public.market_waitlist AS waitlist ON waitlist.reward_path = options.path_id
                 GROUP BY options.path_id, options.label, options.sort_order
