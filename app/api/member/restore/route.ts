@@ -63,12 +63,13 @@ export async function POST(request: Request) {
 
   if (error) {
     console.error('[WaitlistMember] Could not restore member session:', error);
-    if (needsRecoveryMigration(error)) {
-      return NextResponse.json({
-        error: 'Account recovery has not been enabled in the waitlist database yet. The site administrator must apply the latest supabase/WAITLIST_SITE_MIGRATION.sql to the same Supabase project used by this site, then retry. Your existing signup has not been changed.'
-      }, { status: 503 });
-    }
-    return NextResponse.json({ error: 'Waitlist recovery is temporarily unavailable. Please try again later.' }, { status: 503 });
+    const migrationRequired = needsRecoveryMigration(error);
+    const code = typeof error.code === 'string' && /^[A-Z0-9]{4,8}$/.test(error.code) ? ` (${error.code})` : '';
+    return NextResponse.json({
+      error: migrationRequired
+        ? `Account recovery is not enabled in the waitlist database${code}. The site administrator must run the latest supabase/WAITLIST_SITE_MIGRATION.sql against the same Supabase project used by this site, then retry. Your existing signup has not been changed.`
+        : `The waitlist database could not start account recovery${code}. Ask the site administrator to check the Supabase connection and apply supabase/WAITLIST_SITE_MIGRATION.sql if it has not been run. Your existing signup has not been changed.`
+    }, { status: 503 });
   }
 
   if (data?.rate_limited) {
