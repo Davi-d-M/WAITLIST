@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import { PwaInstallProvider } from './pwa-install-provider';
 
 export const metadata: Metadata = {
   title: 'Online Bar | Early Access',
@@ -16,7 +17,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body><PwaInstallProvider>{children}</PwaInstallProvider></body>
     </html>
   );
 }

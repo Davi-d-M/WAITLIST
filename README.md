@@ -20,7 +20,7 @@ Each member receives a short link in the form `/invite/OB-XXXXXXXX`. A newly ins
 
 Members can open the link shown after signup to see invited friends who joined, tokens earned/available, the launch countdown, published souvenirs and request history. Requesting a souvenir atomically reserves its token cost. Admin approval fulfils the request; rejection releases those tokens.
 
-The `/widget` dashboard is an installable PWA/home-screen app shortcut. It refreshes the countdown and referral totals when opened. Browser-hosted sites cannot provide a live, interactive Android/iOS operating-system widget; that requires a native app/widget integration. On iPhone, use Safari's **Share → Add to Home Screen**.
+The `/widget` dashboard is an installable PWA/home-screen app shortcut. After signup, the success screen prompts members to open their personal dashboard and add it to their phone; the dashboard provides the browser's install prompt where supported and platform-specific fallback instructions. The shortcut opens the live countdown and referral totals. Browser-hosted sites cannot provide a live, interactive Android/iOS operating-system widget; that requires a native app/widget integration. On iPhone, use Safari's **Share → Add to Home Screen**.
 
 Android customers can install the separate native home-screen countdown widget in `android-widget`. Build it with `.\gradlew.bat -p android-widget :app:assembleDebug -PwaitlistSiteUrl=https://<your-deployed-waitlist-origin>`. The site URL must be the deployed standalone waitlist HTTPS origin. When a customer joins through the Android app, their private member dashboard token connects the widget to real joined-friend and token balances. Do not publish or share member tokens.
 

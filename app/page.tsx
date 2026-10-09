@@ -469,6 +469,11 @@ export default function Home() {
             </aside>
             <button className="button button-primary" onClick={() => setStep(1)}>Get early access <span>↗</span></button>
             {countdown && <div className="countdown-strip"><b>{countdown.launched ? 'WE ARE LIVE' : 'LAUNCH COUNTDOWN'}</b><span>{countdown.launched ? 'The wait is over.' : `${countdown.days}d ${countdown.hours}h ${countdown.minutes}m ${countdown.seconds}s`}</span></div>}
+            <aside className="countdown-nudge">
+              <span className="countdown-nudge-icon" aria-hidden="true">⌂</span>
+              <div><b>Keep the countdown on your phone.</b><p>Join the list, then add your personal countdown and referral dashboard to your home screen.</p></div>
+              <button className="button button-outline" type="button" onClick={() => setStep(1)}>Join &amp; get my countdown <span>↗</span></button>
+            </aside>
             <p className="inline-note">Join early to see the real souvenirs you can earn. Every friend who joins through your personal link earns {siteContent.tokens_per_referral} tokens toward available rewards.</p>
             <div className="benefits">{[siteContent.benefit_one, siteContent.benefit_two, siteContent.benefit_three].map(benefit => <span key={benefit}>✦ {benefit}</span>)}</div>
           </div>
@@ -565,10 +570,15 @@ export default function Home() {
           </aside>
           {referralCode && <p className="referral">YOUR INVITE CODE <b>{referralCode}</b></p>}
           {rewardPath && <p className="inline-note">Your experience: {rewardPaths.find(path => path.id === rewardPath)?.title}</p>}
-          <p className="success-copy">Your unique link tracks friends who join. Each successful new signup earns you {siteContent.tokens_per_referral} tokens to put toward the souvenirs shown on the site. Install your countdown and referral dashboard on your phone’s home screen to keep your launch timer, joined-friend count and token balance close.</p>
+          <p className="success-copy">Your unique link tracks friends who join. Each successful new signup earns you {siteContent.tokens_per_referral} tokens to put toward the souvenirs shown on the site.</p>
           {referralCode && <div className="member-progress"><span>{memberProgress?.referralsJoined ?? '—'} FRIENDS JOINED</span><b>{memberProgress?.tokensAvailable ?? '—'} TOKENS READY</b></div>}
+          {referralCode && <aside className="countdown-install-nudge">
+            <p className="eyebrow"><span /> TAKE YOUR COUNTDOWN WITH YOU</p>
+            <h2>Add your OB countdown to your home screen.</h2>
+            <p>Open your personal dashboard and follow the steps to add it to your phone. Your countdown, joined-friend total and tokens will be one tap away.</p>
+            <Link className="button button-primary" href={widgetUrl}>Add my countdown <span>↗</span></Link>
+          </aside>}
           <button className="button button-primary" onClick={openShareChooser}>{shareLabel} <span>↗</span></button>
-          {referralCode && <Link className="button button-outline dashboard-link" href={widgetUrl}>Open my countdown &amp; token dashboard <span>↗</span></Link>}
           {memberProgress?.error && <p className="inline-note" role="status">{memberProgress.error}</p>}
         </section>
       )}
