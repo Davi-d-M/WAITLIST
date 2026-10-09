@@ -459,6 +459,14 @@ export default function Home() {
             <p className="eyebrow"><span /> {siteContent.eyebrow}</p>
             <h1>{siteContent.headline}</h1>
             <p className="hero-intro">{siteContent.intro}</p>
+            <aside className="halloween-invite" aria-label="Halloween party invitation opportunity">
+              <span className="halloween-invite-icon" aria-hidden="true">✦</span>
+              <div>
+                <p className="halloween-invite-eyebrow">A LITTLE HALLOWEEN MAGIC</p>
+                <h2>A night to remember.</h2>
+                <p>Join the early-access list for a chance to receive a special invitation to our Halloween-themed party. The location and event details will be shared with invited guests in due time.</p>
+              </div>
+            </aside>
             <button className="button button-primary" onClick={() => setStep(1)}>Get early access <span>↗</span></button>
             {countdown && <div className="countdown-strip"><b>{countdown.launched ? 'WE ARE LIVE' : 'LAUNCH COUNTDOWN'}</b><span>{countdown.launched ? 'The wait is over.' : `${countdown.days}d ${countdown.hours}h ${countdown.minutes}m ${countdown.seconds}s`}</span></div>}
             <p className="inline-note">Join early to see the real souvenirs you can earn. Every friend who joins through your personal link earns {siteContent.tokens_per_referral} tokens toward available rewards.</p>
@@ -547,6 +555,14 @@ export default function Home() {
               ? `We’re not serving ${resolvedArea}, ${resolvedCity} just yet, but we’re coming soon. We’ve recorded your area${landmark.trim() ? ` near ${landmark.trim()}` : ''} to help us plan where to expand next, and we’ll keep you posted.`
               : `We’ve recorded demand for ${resolvedArea}, ${resolvedCity}${landmark.trim() ? ` near ${landmark.trim()}` : ''}. We’re still confirming launch coverage, and we’ll share an update as soon as we know more.`}</p>
           <p className="success-copy">You’re now on the Online Bar early-access list. Keep an eye on the contact channel(s) you selected for your update.</p>
+          <aside className="halloween-invite halloween-invite-success" aria-label="Halloween party invitation opportunity">
+            <span className="halloween-invite-icon" aria-hidden="true">✦</span>
+            <div>
+              <p className="halloween-invite-eyebrow">YOUR NEXT NIGHT OUT?</p>
+              <h2>You could be invited.</h2>
+              <p>You’re in the running for a special invitation to our Halloween-themed party. We’ll share the location and event details with invited guests in due time.</p>
+            </div>
+          </aside>
           {referralCode && <p className="referral">YOUR INVITE CODE <b>{referralCode}</b></p>}
           {rewardPath && <p className="inline-note">Your experience: {rewardPaths.find(path => path.id === rewardPath)?.title}</p>}
           <p className="success-copy">Your unique link tracks friends who join. Each successful new signup earns you {siteContent.tokens_per_referral} tokens to put toward the souvenirs shown on the site. Install your countdown and referral dashboard on your phone’s home screen to keep your launch timer, joined-friend count and token balance close.</p>

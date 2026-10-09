@@ -4,7 +4,13 @@ import './globals.css';
 export const metadata: Metadata = {
   title: 'Online Bar | Early Access',
   description: 'Join the Online Bar early-access list, invite friends, earn tokens and see what you can redeem.',
-  manifest: '/manifest.webmanifest'
+  applicationName: 'OB',
+  manifest: '/manifest.webmanifest',
+  icons: {
+    icon: '/icon.svg',
+    shortcut: '/icon.svg',
+    apple: '/icon.svg'
+  }
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
