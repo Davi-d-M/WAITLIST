@@ -18,7 +18,7 @@ export async function GET() {
   }
   const database = createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
   const { data, error } = await database.from('waitlist_site_content')
-    .select('eyebrow,headline,intro,benefit_one,benefit_two,benefit_three,hero_image_url,hero_image_alt,age_group_tracks,launch_at,tokens_per_referral')
+    .select('eyebrow,headline,intro,benefit_one,benefit_two,benefit_three,hero_image_url,hero_image_alt,age_group_tracks,genre_tracks,launch_at,tokens_per_referral')
     .eq('id', 'default')
     .maybeSingle();
   if (error) {
@@ -52,6 +52,23 @@ export async function GET() {
       })
       .map(([group, track]) => [group, { title: track.title, url: track.url }])
   );
+  const allowedGenres = new Set(['reggae', 'genge', 'gengetone', 'soul', 'rnb', 'classic', 'love_romance', 'afrobeats', 'hip_hop', 'pop', 'other']);
+  const rawGenreTracks = data.genre_tracks && typeof data.genre_tracks === 'object'
+    ? data.genre_tracks as Record<string, { title?: unknown; url?: unknown }>
+    : {};
+  const genreTracks = Object.fromEntries(
+    Object.entries(rawGenreTracks)
+      .filter(([genre, track]) => {
+        if (!allowedGenres.has(genre) || !track || typeof track !== 'object'
+          || typeof track.title !== 'string' || typeof track.url !== 'string') return false;
+        try {
+          return new URL(track.url).protocol === 'https:';
+        } catch {
+          return false;
+        }
+      })
+      .map(([genre, track]) => [genre, { title: track.title, url: track.url }])
+  );
   const content = {
     eyebrow: data.eyebrow,
     headline: data.headline,
@@ -73,7 +90,7 @@ export async function GET() {
     console.error('[WaitlistSite] Could not load published souvenirs:', rewardsError);
     return NextResponse.json({ error: 'Souvenir and widget content could not be loaded. Apply the waitlist site migration.' }, { status: 503 });
   }
-  return NextResponse.json({ content: { ...content, age_group_tracks: ageGroupTracks }, rewards: rewards || [] }, {
+  return NextResponse.json({ content: { ...content, age_group_tracks: ageGroupTracks, genre_tracks: genreTracks }, rewards: rewards || [] }, {
     headers: { 'Cache-Control': 'private, no-store, max-age=0' }
   });
 }

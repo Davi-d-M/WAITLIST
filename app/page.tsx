@@ -23,6 +23,19 @@ const frequencies = [
   ['occasions', 'For special occasions'],
   ['depends', 'It depends']
 ];
+const musicGenres = [
+  { id: 'reggae', label: 'Reggae' },
+  { id: 'genge', label: 'Genge' },
+  { id: 'gengetone', label: 'Gengetone' },
+  { id: 'soul', label: 'Soul' },
+  { id: 'rnb', label: 'R&B' },
+  { id: 'classic', label: 'Classics' },
+  { id: 'love_romance', label: 'Love & Romance' },
+  { id: 'afrobeats', label: 'Afrobeats' },
+  { id: 'hip_hop', label: 'Hip-hop' },
+  { id: 'pop', label: 'Pop' },
+  { id: 'other', label: 'Other' }
+];
 
 type SignupResult = { success?: boolean; alreadyJoined?: boolean; serviceAreaStatus?: 'in_area' | 'outside_area' | 'unknown'; referralCode?: string; memberAccessToken?: string; error?: string };
 type RestoreMemberResult = { success?: boolean; memberToken?: string; referralCode?: string; error?: string };
@@ -61,6 +74,7 @@ type SiteContent = {
   hero_image_url: string | null;
   hero_image_alt: string;
   age_group_tracks: Record<string, { title: string; url: string }>;
+  genre_tracks: Record<string, { title: string; url: string }>;
   launch_at: string | null;
   tokens_per_referral: number;
 };
@@ -83,6 +97,7 @@ const defaultSiteContent: SiteContent = {
   hero_image_url: null,
   hero_image_alt: 'Online Bar early access',
   age_group_tracks: {},
+  genre_tracks: {},
   launch_at: null,
   tokens_per_referral: 10
 };
@@ -116,17 +131,20 @@ function countdownParts(launchAt: string | null, now: number) {
 export default function Home() {
   const audioRef = useRef<HTMLAudioElement>(null);
   const musicFadeRef = useRef<number | null>(null);
+  const activeTrackUrlRef = useRef('');
   const analyticsSessionRef = useRef<string | null>(null);
   const pageOpenRecordedRef = useRef(false);
   const musicQualifiedRef = useRef(false);
   const [siteContent, setSiteContent] = useState<SiteContent>(defaultSiteContent);
   const [siteContentLoaded, setSiteContentLoaded] = useState(false);
+  const [refreshingTracks, setRefreshingTracks] = useState(false);
   const [siteRewards, setSiteRewards] = useState<SiteReward[]>([]);
   const [memberProgress, setMemberProgress] = useState<MemberProgress | null>(null);
   const [now, setNow] = useState(0);
   const [ageGateComplete, setAgeGateComplete] = useState(false);
   const [adultConfirmedAtEntry, setAdultConfirmedAtEntry] = useState(false);
   const [ageGroup, setAgeGroup] = useState('');
+  const [musicGenre, setMusicGenre] = useState('');
   const [musicPlaying, setMusicPlaying] = useState(false);
   const [musicNotice, setMusicNotice] = useState('');
   const [step, setStep] = useState(0);
@@ -165,21 +183,34 @@ export default function Home() {
   const [memberRecovered, setMemberRecovered] = useState(false);
   const shareDialogCloseRef = useRef<HTMLButtonElement>(null);
 
-  useEffect(() => {
-    void fetch('/api/content', { cache: 'no-store' })
-      .then(async response => {
-        const result = await response.json() as { content?: SiteContent; rewards?: SiteReward[]; error?: string };
-        if (!response.ok || !result.content) throw new Error(result.error || 'Published content could not be loaded.');
-        setSiteContent({ ...defaultSiteContent, ...result.content });
-        setSiteRewards(result.rewards || []);
-      })
-      .catch(cause => {
-        console.error('[WaitlistSite] Using default landing page content:', cause);
-      })
-      .finally(() => {
-        setSiteContentLoaded(true);
-      });
+  const loadPublishedContent = useCallback(async () => {
+    try {
+      const response = await fetch('/api/content', { cache: 'no-store' });
+      const result = await response.json() as { content?: SiteContent; rewards?: SiteReward[]; error?: string };
+      if (!response.ok || !result.content) throw new Error(result.error || 'Published content could not be loaded.');
+      setSiteContent({ ...defaultSiteContent, ...result.content });
+      setSiteRewards(result.rewards || []);
+    } catch (cause) {
+      console.error('[WaitlistSite] Could not refresh published content:', cause);
+      setMusicNotice('Could not check for new music right now. Please try again.');
+    } finally {
+      setSiteContentLoaded(true);
+      setRefreshingTracks(false);
+    }
   }, []);
+
+  useEffect(() => {
+    void loadPublishedContent();
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === 'visible') void loadPublishedContent();
+    };
+    window.addEventListener('focus', refreshWhenVisible);
+    document.addEventListener('visibilitychange', refreshWhenVisible);
+    return () => {
+      window.removeEventListener('focus', refreshWhenVisible);
+      document.removeEventListener('visibilitychange', refreshWhenVisible);
+    };
+  }, [loadPublishedContent]);
 
   useEffect(() => {
     const accessToken = window.localStorage.getItem('waitlist-member-token') || '';
@@ -243,7 +274,7 @@ export default function Home() {
       .finally(() => setRestoringMember(false));
   }, []);
 
-  const recordAnalytics = useCallback((eventType: string, selectedAgeGroup?: string, trackTitle?: string) => {
+  const recordAnalytics = useCallback((eventType: string, selectedAgeGroup?: string, trackTitle?: string, selectedGenre?: string) => {
     let sessionId = analyticsSessionRef.current;
     if (!sessionId) {
       try {
@@ -258,7 +289,7 @@ export default function Home() {
     void fetch('/api/analytics', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ eventType, sessionId, ageGroup: selectedAgeGroup || null, trackTitle: trackTitle || null })
+      body: JSON.stringify({ eventType, sessionId, ageGroup: selectedAgeGroup || null, trackTitle: trackTitle || null, musicGenre: selectedGenre || null })
     }).then(async response => {
       if (!response.ok) {
         const result = await response.json() as { error?: string };
@@ -319,18 +350,23 @@ export default function Home() {
   const resolvedCity = location.city === 'Other' ? customCity.trim() : location.city;
   const updatesAllowed = consents.email || consents.sms || consents.whatsapp;
   const selectedAgeGroup = ageGroups.find(group => group.id === ageGroup);
-  const currentAgeTrack = ageGroup ? siteContent.age_group_tracks[ageGroup] : undefined;
+  const currentTrack = musicGenre
+    ? siteContent.genre_tracks[musicGenre]
+    : ageGroup ? siteContent.age_group_tracks[ageGroup] : undefined;
 
-  const startMusic = (audio: HTMLAudioElement, trackUrl?: string, trackTitle?: string) => {
+  const startMusic = (audio: HTMLAudioElement, trackUrl?: string, trackTitle?: string, selectedGenre = musicGenre) => {
     if (musicFadeRef.current !== null) window.clearInterval(musicFadeRef.current);
     musicFadeRef.current = null;
     musicQualifiedRef.current = false;
-    if (trackUrl) audio.src = trackUrl;
+    if (trackUrl) {
+      audio.src = trackUrl;
+      activeTrackUrlRef.current = trackUrl;
+    }
     audio.volume = 0.03;
     void audio.play()
       .then(() => {
         setMusicPlaying(true);
-        recordAnalytics('music_started', ageGroup, trackTitle || currentAgeTrack?.title);
+        recordAnalytics('music_started', ageGroup, trackTitle || currentTrack?.title, selectedGenre || undefined);
         musicFadeRef.current = window.setInterval(() => {
           const nextVolume = Math.min(audio.volume + 0.015, 0.3);
           audio.volume = nextVolume;
@@ -342,7 +378,7 @@ export default function Home() {
       })
       .catch(() => {
         setMusicPlaying(false);
-        setMusicNotice('Tap “Play music” to start your age-group track.');
+        setMusicNotice('Tap “Play music” to start your selected track.');
       });
   };
 
@@ -351,8 +387,8 @@ export default function Home() {
     recordAnalytics('age_group_selected', ageGroup);
     setAgeGateComplete(true);
     setMusicNotice('');
-    if (currentAgeTrack && audioRef.current) {
-      startMusic(audioRef.current, currentAgeTrack.url, currentAgeTrack.title);
+    if (currentTrack && audioRef.current) {
+      startMusic(audioRef.current, currentTrack.url, currentTrack.title);
     }
   };
 
@@ -367,8 +403,32 @@ export default function Home() {
       return;
     }
     setMusicNotice('');
-    startMusic(audio, undefined, currentAgeTrack?.title);
+    startMusic(audio, currentTrack?.url, currentTrack?.title);
   };
+
+  const changeMusicGenre = (genre: string) => {
+    setMusicGenre(genre);
+    if (!ageGateComplete) return;
+    const track = genre ? siteContent.genre_tracks[genre] : siteContent.age_group_tracks[ageGroup];
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (!track) {
+      if (musicFadeRef.current !== null) window.clearInterval(musicFadeRef.current);
+      musicFadeRef.current = null;
+      audio.pause();
+      setMusicPlaying(false);
+      setMusicNotice('No song is uploaded for that style yet. Choose another genre or your age-group mix.');
+      return;
+    }
+    setMusicNotice('');
+    startMusic(audio, track.url, track.title, genre);
+  };
+
+  useEffect(() => {
+    if (!ageGateComplete || !musicPlaying || !currentTrack || activeTrackUrlRef.current === currentTrack.url) return;
+    const audio = audioRef.current;
+    if (audio) startMusic(audio, currentTrack.url, currentTrack.title, musicGenre);
+  }, [ageGateComplete, currentTrack?.title, currentTrack?.url, musicGenre, musicPlaying]);
 
   const requestLocation = () => {
     setError('');
@@ -580,9 +640,9 @@ export default function Home() {
       <nav className="topbar"><Link className="brand" href="/" aria-label="Online Bar home"><span className="brand-mark">OB</span><span>ONLINE BAR<span className="brand-sub">GOOD TIMES, DELIVERED</span></span></Link><span className="top-status"><i /> EARLY ACCESS</span></nav>
       <audio ref={audioRef} loop preload="none" onTimeUpdate={event => {
         const audio = event.currentTarget;
-        if (!musicQualifiedRef.current && currentAgeTrack && audio.duration > 0 && audio.currentTime / audio.duration >= 0.8) {
+        if (!musicQualifiedRef.current && currentTrack && audio.duration > 0 && audio.currentTime / audio.duration >= 0.8) {
           musicQualifiedRef.current = true;
-          recordAnalytics('music_heard_80', ageGroup, currentAgeTrack.title);
+          recordAnalytics('music_heard_80', ageGroup, currentTrack.title, musicGenre || undefined);
         }
       }} onEnded={() => {
         if (musicFadeRef.current !== null) window.clearInterval(musicFadeRef.current);
@@ -593,8 +653,10 @@ export default function Home() {
         <section className="age-gate">
           <p className="eyebrow"><span /> ONLINE BAR EARLY ACCESS</p>
           <h1>First, are you <em>18+?</em></h1>
-          <p>This experience is for adults of legal drinking age. Choose an age range; we do not ask for your date of birth. Your range is only saved if you join the waitlist.</p>
+          <p>This experience is for adults of legal drinking age. Choose an age range and the music you love; we do not ask for your date of birth. Your range is only saved if you join the waitlist.</p>
           <label className="age-gate-select">Your age range<select value={ageGroup} onChange={event => setAgeGroup(event.target.value)}><option value="">Choose an adult age range</option>{ageGroups.map(group => <option key={group.id} value={group.id}>{group.label}</option>)}</select></label>
+          <label className="age-gate-select">Your music style<select value={musicGenre} onChange={event => changeMusicGenre(event.target.value)}><option value="">Play my age-group mix</option>{musicGenres.map(genre => <option key={genre.id} value={genre.id} disabled={!siteContent.genre_tracks[genre.id]}>{genre.label}{siteContent.genre_tracks[genre.id] ? '' : ' · no song yet'}</option>)}</select></label>
+          {Object.keys(siteContent.genre_tracks).length === 0 && <p className="inline-note">Pick your age range for now. Genre tracks are coming soon.</p>}
           <label className="check-row age-row"><input type="checkbox" checked={adultConfirmedAtEntry} onChange={event => setAdultConfirmedAtEntry(event.target.checked)} /><span>I confirm I am 18 or older.</span></label>
           <p className="privacy-note">Music starts softly after you continue, then gradually gets louder. You can pause it anytime. We count anonymous site opens and age-group track listens to learn what resonates; activity is not linked to signup details. The area heat map uses only the neighbourhood members choose to share when joining.</p>
           <button className="button button-primary" disabled={!siteContentLoaded || !ageGroup || !adultConfirmedAtEntry} onClick={enterSite}>{siteContentLoaded ? 'Enter & play' : 'Loading…'} <span>↗</span></button>
@@ -621,13 +683,20 @@ export default function Home() {
               </form>
             </>}
           </aside>}
-          {!currentAgeTrack && siteContentLoaded && <p className="inline-note">No track is assigned to this age range yet. You can still continue.</p>}
+          {!currentTrack && siteContentLoaded && <p className="inline-note">{musicGenre ? 'No track is assigned to that genre yet.' : 'No track is assigned to this age range yet.'} You can still continue.</p>}
         </section>
       )}
       {ageGateComplete && (
         <div className="music-control">
-          <span>{currentAgeTrack ? currentAgeTrack.title : 'Music not set for this range'}</span>
-          {currentAgeTrack && <button type="button" onClick={toggleMusic}>{musicPlaying ? 'Pause music' : 'Play music'}</button>}
+          <label className="music-genre-control">Music style
+            <select aria-label="Choose music style" value={musicGenre} onChange={event => changeMusicGenre(event.target.value)}>
+              <option value="">My age-group mix</option>
+              {musicGenres.map(genre => <option key={genre.id} value={genre.id} disabled={!siteContent.genre_tracks[genre.id]}>{genre.label}{siteContent.genre_tracks[genre.id] ? '' : ' · no song yet'}</option>)}
+            </select>
+          </label>
+          <span>{currentTrack ? `Now playing: ${currentTrack.title}` : 'Music not set for this choice'}</span>
+          <button type="button" disabled={refreshingTracks} onClick={() => { setRefreshingTracks(true); void loadPublishedContent(); }}>{refreshingTracks ? 'Checking for new songs…' : 'Check for new songs'}</button>
+          {currentTrack && <button type="button" onClick={toggleMusic}>{musicPlaying ? 'Pause music' : 'Play music'}</button>}
           {musicNotice && <span role="status">{musicNotice}</span>}
         </div>
       )}

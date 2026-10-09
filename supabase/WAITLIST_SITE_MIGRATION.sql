@@ -86,6 +86,7 @@ CREATE TABLE IF NOT EXISTS public.waitlist_site_content (
     hero_image_path TEXT,
     hero_image_alt TEXT NOT NULL DEFAULT 'Online Bar early access',
     age_group_tracks JSONB NOT NULL DEFAULT '{}'::JSONB,
+    genre_tracks JSONB NOT NULL DEFAULT '{}'::JSONB,
     launch_at TIMESTAMPTZ,
     tokens_per_referral INTEGER NOT NULL DEFAULT 10,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -93,6 +94,7 @@ CREATE TABLE IF NOT EXISTS public.waitlist_site_content (
 
 ALTER TABLE public.waitlist_site_content
     ADD COLUMN IF NOT EXISTS age_group_tracks JSONB NOT NULL DEFAULT '{}'::JSONB,
+    ADD COLUMN IF NOT EXISTS genre_tracks JSONB NOT NULL DEFAULT '{}'::JSONB,
     ADD COLUMN IF NOT EXISTS launch_at TIMESTAMPTZ,
     ADD COLUMN IF NOT EXISTS tokens_per_referral INTEGER NOT NULL DEFAULT 10,
     DROP CONSTRAINT IF EXISTS waitlist_site_content_tokens_per_referral_check,
@@ -445,6 +447,7 @@ CREATE TABLE IF NOT EXISTS public.waitlist_site_analytics_events (
     session_id UUID NOT NULL,
     event_type TEXT NOT NULL CHECK (event_type IN ('page_open', 'age_group_selected', 'music_started', 'music_heard_80')),
     age_group TEXT CHECK (age_group IS NULL OR age_group IN ('18_20', '21_24', '25_34', '35_44', '45_plus')),
+    music_genre TEXT CHECK (music_genre IS NULL OR music_genre IN ('reggae', 'genge', 'gengetone', 'soul', 'rnb', 'classic', 'love_romance', 'afrobeats', 'hip_hop', 'pop', 'other')),
     track_title TEXT CHECK (track_title IS NULL OR length(track_title) <= 120),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     CHECK (
@@ -452,6 +455,9 @@ CREATE TABLE IF NOT EXISTS public.waitlist_site_analytics_events (
         OR (event_type NOT IN ('music_started', 'music_heard_80') AND track_title IS NULL)
     )
 );
+
+ALTER TABLE public.waitlist_site_analytics_events
+    ADD COLUMN IF NOT EXISTS music_genre TEXT CHECK (music_genre IS NULL OR music_genre IN ('reggae', 'genge', 'gengetone', 'soul', 'rnb', 'classic', 'love_romance', 'afrobeats', 'hip_hop', 'pop', 'other'));
 
 CREATE INDEX IF NOT EXISTS waitlist_site_analytics_created_type_idx
     ON public.waitlist_site_analytics_events (created_at DESC, event_type);
@@ -505,20 +511,21 @@ AS $$
         'music', COALESCE((
             SELECT jsonb_agg(jsonb_build_object(
                 'age_group', music.age_group,
+                'music_genre', music.music_genre,
                 'track_title', music.track_title,
                 'starts', music.starts,
                 'heard_80', music.heard_80,
                 'listeners', music.listeners
             ) ORDER BY music.age_group, music.heard_80::NUMERIC / GREATEST(music.starts, 1) DESC, music.starts DESC)
             FROM (
-                SELECT age_group, track_title,
+                SELECT age_group, music_genre, track_title,
                     count(*) FILTER (WHERE event_type = 'music_started')::BIGINT AS starts,
                     count(*) FILTER (WHERE event_type = 'music_heard_80')::BIGINT AS heard_80,
                     count(DISTINCT session_id) FILTER (WHERE event_type = 'music_started')::BIGINT AS listeners
                 FROM public.waitlist_site_analytics_events
                 WHERE event_type IN ('music_started', 'music_heard_80')
                     AND created_at >= COALESCE(p_since, now() - INTERVAL '30 days')
-                GROUP BY age_group, track_title
+                GROUP BY age_group, music_genre, track_title
             ) AS music
         ), '[]'::JSONB),
         'locations', COALESCE((
