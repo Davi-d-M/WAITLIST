@@ -4,7 +4,7 @@ This folder is an independently deployable Next.js site. It uses the same Supaba
 
 ## Deploy
 
-1. Run `supabase/WAITLIST_SITE_MIGRATION.sql` against the Online Bar Supabase project. It creates/extends the shared waitlist, private referral-token ledger, souvenir catalog and request tables, atomic reward-claim function, editable site content, and public-read-only image/audio buckets.
+1. Run `supabase/WAITLIST_SITE_MIGRATION.sql` against the Online Bar Supabase project. It creates/extends the shared waitlist, private referral-token ledger, souvenir catalog and request tables, atomic reward-claim function, editable site content, and public-read-only image/audio buckets. To enable member recovery on an existing deployment, also run `supabase/WAITLIST_MEMBER_RECOVERY_MIGRATION.sql` in that same project.
 2. Create a separate hosting project with this folder as its root directory.
 3. In the hosting project's private Production environment, set `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` to values from the same Supabase project as Online Bar Admin. Never prefix the service-role key with `NEXT_PUBLIC_` or expose it to the browser. Redeploy after setting environment variables.
 4. Optionally set `WAITLIST_LAUNCH_AREAS` to comma-separated area names. If unset, the site reads published `settings.logistics.dispatch_zones` from the shared database.

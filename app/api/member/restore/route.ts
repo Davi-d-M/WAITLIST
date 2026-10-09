@@ -67,8 +67,8 @@ export async function POST(request: Request) {
     const code = typeof error.code === 'string' && /^[A-Z0-9]{4,8}$/.test(error.code) ? ` (${error.code})` : '';
     return NextResponse.json({
       error: migrationRequired
-        ? `Account recovery is not enabled in the waitlist database${code}. The site administrator must run the latest supabase/WAITLIST_SITE_MIGRATION.sql against the same Supabase project used by this site, then retry. Your existing signup has not been changed.`
-        : `The waitlist database could not start account recovery${code}. Ask the site administrator to check the Supabase connection and apply supabase/WAITLIST_SITE_MIGRATION.sql if it has not been run. Your existing signup has not been changed.`
+        ? `Account recovery is not enabled in the waitlist database${code}. The site administrator must run supabase/WAITLIST_MEMBER_RECOVERY_MIGRATION.sql against the same Supabase project used by this site, then retry. Your existing signup has not been changed.`
+        : `The waitlist database could not start account recovery${code}. Ask the site administrator to check the Supabase connection and run supabase/WAITLIST_MEMBER_RECOVERY_MIGRATION.sql if it has not been applied. Your existing signup has not been changed.`
     }, { status: 503 });
   }
 
