@@ -8,6 +8,7 @@ type Reward = { id: string; name: string; description: string; image_url: string
 type Claim = { id: string; reward_id: string; tokens_spent: number; status: 'pending' | 'approved' | 'rejected'; created_at: string };
 type Progress = { referralCode: string; ageGroup: string | null; referralsJoined: number; tokensEarned: number; tokensAvailable: number; claims: Claim[] };
 type Content = { launch_at: string | null; tokens_per_referral: number };
+const defaultContent: Content = { launch_at: null, tokens_per_referral: 10 };
 function shareLabel(group: string | null) {
   if (group === '18_20' || group === '21_24') return 'Share the buzz';
   if (group === '25_34') return 'Tell a friend';
@@ -30,10 +31,11 @@ export default function WaitlistWidgetPage() {
   const [memberToken, setMemberToken] = useState('');
   const [progress, setProgress] = useState<Progress | null>(null);
   const [rewards, setRewards] = useState<Reward[]>([]);
-  const [content, setContent] = useState<Content>({ launch_at: null, tokens_per_referral: 10 });
+  const [content, setContent] = useState<Content>(defaultContent);
   const [now, setNow] = useState(0);
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
+  const [contentWarning, setContentWarning] = useState('');
   const [busyReward, setBusyReward] = useState('');
   const [loading, setLoading] = useState(true);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
@@ -49,10 +51,17 @@ export default function WaitlistWidgetPage() {
     const memberData = await memberResponse.json() as Progress & { error?: string };
     const contentData = await contentResponse.json() as { content?: Content; rewards?: Reward[]; error?: string };
     if (!memberResponse.ok) throw new Error(memberData.error || 'Your referral progress could not be loaded.');
-    if (!contentResponse.ok || !contentData.content) throw new Error(contentData.error || 'Launch and souvenir details could not be loaded.');
     setProgress(memberData);
+    if (!contentResponse.ok || !contentData.content) {
+      console.error('[WaitlistWidget] Launch and souvenir content is unavailable:', contentData.error);
+      setContent(defaultContent);
+      setRewards([]);
+      setContentWarning('Your referrals and tokens are available. Launch countdown and souvenirs are temporarily unavailable.');
+      return;
+    }
     setContent(contentData.content);
     setRewards(contentData.rewards || []);
+    setContentWarning('');
   }, []);
 
   useEffect(() => {
@@ -197,6 +206,7 @@ export default function WaitlistWidgetPage() {
               ? 'On Android: open this page in Chrome, tap the browser menu ⋮, then choose “Install app” or “Add to Home screen.”'
               : 'Open this page in your browser menu and choose “Install app” or “Add to Home screen” when available.'}</p>}
       </section>}
+      {contentWarning && <p className="error" role="status">{contentWarning}</p>}
       {isInstalled && <p className="inline-note" role="status">Your OB countdown dashboard is installed. Open it from your home screen any time.</p>}
       <section className="widget-countdown">
         <p className="eyebrow"><span /> THE LAUNCH IS GETTING CLOSER</p>

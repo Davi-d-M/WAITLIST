@@ -3,6 +3,12 @@ import { createClient } from '@supabase/supabase-js';
 
 export const dynamic = 'force-dynamic';
 
+function isMissingGenreColumn(error: { code?: string; message?: string } | null) {
+  if (!error) return false;
+  return ['42703', 'PGRST200', 'PGRST204'].includes(error.code || '')
+    && (error.message || '').toLowerCase().includes('genre_tracks');
+}
+
 export async function GET() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
@@ -17,15 +23,27 @@ export async function GET() {
     }, { status: 503 });
   }
   const database = createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
-  const { data, error } = await database.from('waitlist_site_content')
+  let { data, error } = await database.from('waitlist_site_content')
     .select('eyebrow,headline,intro,benefit_one,benefit_two,benefit_three,hero_image_url,hero_image_alt,age_group_tracks,genre_tracks,launch_at,tokens_per_referral')
     .eq('id', 'default')
     .maybeSingle();
+  if (isMissingGenreColumn(error)) {
+    const legacyResult = await database.from('waitlist_site_content')
+      .select('eyebrow,headline,intro,benefit_one,benefit_two,benefit_three,hero_image_url,hero_image_alt,age_group_tracks,launch_at,tokens_per_referral')
+      .eq('id', 'default')
+      .maybeSingle();
+    if (legacyResult.error) {
+      error = legacyResult.error;
+    } else {
+      data = legacyResult.data ? { ...legacyResult.data, genre_tracks: {} } : null;
+      error = null;
+    }
+  }
   if (error) {
     console.error('[WaitlistSite] Could not load published website content:', error);
-    if (error.code === '42P01' || error.code === 'PGRST205') {
+    if (error.code === '42P01' || error.code === 'PGRST205' || error.code === '42703' || error.code === 'PGRST204') {
       return NextResponse.json({
-        error: 'Waitlist content storage is not set up. Run supabase/WAITLIST_SITE_MIGRATION.sql in the Supabase project used by this site.'
+        error: 'Waitlist content storage is missing a required table or column. Run the latest supabase/WAITLIST_SITE_MIGRATION.sql in the Supabase project used by both the waitlist and Admin.'
       }, { status: 503 });
     }
     return NextResponse.json({ error: 'Published website content could not be loaded. Check the server logs and Supabase connection.' }, { status: 503 });
