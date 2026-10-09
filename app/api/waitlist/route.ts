@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from 'node:crypto';
+import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 
@@ -71,6 +71,7 @@ type SignupBody = {
   campaign?: unknown;
   source?: unknown;
   landingPage?: unknown;
+  memberAccessToken?: unknown;
   website?: unknown;
 };
 
@@ -266,7 +267,7 @@ export async function POST(request: Request) {
   }
   const now = new Date().toISOString();
   const { data: existingRows, error: lookupError } = await database.from('market_waitlist')
-    .select('id,user_id,city,area,referral_code')
+    .select('id,city,area,referral_code,member_access_token_hash')
     .eq('email', email)
     .limit(100);
   if (lookupError) {
@@ -276,8 +277,31 @@ export async function POST(request: Request) {
   const existing = existingRows?.find(row =>
     row.city.toLowerCase() === city.toLowerCase() && row.area.toLowerCase() === area.toLowerCase()
   );
+  if (existing) {
+    const presentedToken = text(body.memberAccessToken, 100);
+    const presentedHash = createHash('sha256').update(presentedToken).digest();
+    const storedHash = typeof existing.member_access_token_hash === 'string'
+      ? Buffer.from(existing.member_access_token_hash, 'hex')
+      : Buffer.alloc(0);
+    const tokenMatches = /^[A-Za-z0-9_-]{43}$/.test(presentedToken)
+      && storedHash.length === presentedHash.length
+      && timingSafeEqual(storedHash, presentedHash);
+    if (!tokenMatches) {
+      return NextResponse.json({
+        error: 'You are already on the early-access list for this area. Open your personal dashboard on the device where you joined; we did not create another signup or change your account.'
+      }, { status: 409 });
+    }
+    return NextResponse.json({
+      success: true,
+      alreadyJoined: true,
+      serviceAreaStatus,
+      referralCode: existing.referral_code,
+      memberAccessToken: presentedToken
+    }, { headers: { 'Cache-Control': 'no-store' } });
+  }
+
   const memberAccessToken = randomBytes(32).toString('base64url');
-  const newReferralCode = existing?.referral_code || `OB-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
+  const newReferralCode = `OB-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
   const values = {
     full_name: fullName || null,
     email,
@@ -316,12 +340,10 @@ export async function POST(request: Request) {
     status: 'WAITLIST',
     notified_at: null,
     unsubscribed_at: null,
-    user_id: existing?.user_id || null,
+    user_id: null,
     updated_at: now
   };
-  const result = existing
-    ? await database.from('market_waitlist').update(values).eq('id', existing.id)
-    : await database.from('market_waitlist').insert(values);
+  const result = await database.from('market_waitlist').insert(values);
   if (result.error) {
     console.error('[Waitlist] Could not save signup:', result.error);
     if (result.error.code === '42P01' || result.error.code === 'PGRST205' || result.error.code === '42703') {

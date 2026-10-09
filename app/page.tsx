@@ -24,9 +24,25 @@ const frequencies = [
   ['depends', 'It depends']
 ];
 
-type SignupResult = { success?: boolean; serviceAreaStatus?: 'in_area' | 'outside_area' | 'unknown'; referralCode?: string; memberAccessToken?: string; error?: string };
+type SignupResult = { success?: boolean; alreadyJoined?: boolean; serviceAreaStatus?: 'in_area' | 'outside_area' | 'unknown'; referralCode?: string; memberAccessToken?: string; error?: string };
 type Location = { country: string; county: string; city: string; area: string; verified: boolean; accuracy: number | null };
 type RewardPath = 'wine' | 'adventure' | 'music';
+type SavedMemberProfile = {
+  fullName: string | null;
+  email: string;
+  phone: string | null;
+  country: string;
+  county: string;
+  city: string;
+  area: string;
+  landmark: string | null;
+  productInterests: string[];
+  orderFrequency: string | null;
+  emailConsent: boolean;
+  smsConsent: boolean;
+  whatsappConsent: boolean;
+  preferredContactMethod: 'email' | 'sms' | 'whatsapp' | null;
+};
 declare global {
   interface Window {
     OnlineBarNative?: {
@@ -138,6 +154,9 @@ export default function Home() {
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [shareLink, setShareLink] = useState('');
   const [shareMessage, setShareMessage] = useState('');
+  const [savedMemberProfile, setSavedMemberProfile] = useState<SavedMemberProfile | null>(null);
+  const [restoringMember, setRestoringMember] = useState(true);
+  const [savedMemberError, setSavedMemberError] = useState('');
   const shareDialogCloseRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -154,6 +173,68 @@ export default function Home() {
       .finally(() => {
         setSiteContentLoaded(true);
       });
+  }, []);
+
+  useEffect(() => {
+    const accessToken = window.localStorage.getItem('waitlist-member-token') || '';
+    if (!accessToken) {
+      setRestoringMember(false);
+      return;
+    }
+
+    void fetch('/api/member', { cache: 'no-store', headers: { Authorization: `Bearer ${accessToken}` } })
+      .then(async response => {
+        const result = await response.json() as {
+          referralCode?: string;
+          ageGroup?: string | null;
+          rewardPath?: RewardPath | null;
+          profile?: SavedMemberProfile;
+          error?: string;
+        };
+        if (response.status === 401) {
+          window.localStorage.removeItem('waitlist-member-token');
+          window.localStorage.removeItem('waitlist-referral-code');
+          throw new Error('This device’s saved waitlist session has expired. Please contact us to recover your existing signup; do not sign up again for the same area.');
+        }
+        if (!response.ok || !result.profile || !result.referralCode) {
+          throw new Error(result.error || 'Your saved waitlist details could not be restored. Please try again.');
+        }
+
+        const profile = result.profile;
+        const cityIsKnown = Object.prototype.hasOwnProperty.call(areasByCity, profile.city) && profile.city !== 'Other';
+        const savedAreaIsKnown = cityIsKnown && areasByCity[profile.city].areas.includes(profile.area);
+        setSavedMemberProfile(profile);
+        setFullName(profile.fullName || '');
+        setEmail(profile.email);
+        setPhone(profile.phone || '');
+        setLocation(current => ({
+          ...current,
+          country: profile.country || current.country,
+          county: profile.county || current.county,
+          city: cityIsKnown ? profile.city : 'Other',
+          area: savedAreaIsKnown ? profile.area : ''
+        }));
+        setCustomCity(cityIsKnown ? '' : profile.city);
+        setCustomArea(savedAreaIsKnown ? '' : profile.area);
+        setLandmark(profile.landmark || '');
+        setSelectedInterests(profile.productInterests);
+        setFrequency(profile.orderFrequency || '');
+        setConsents({
+          email: profile.emailConsent,
+          sms: profile.smsConsent,
+          whatsapp: profile.whatsappConsent
+        });
+        setPreferredContactMethod(profile.preferredContactMethod || '');
+        if (result.ageGroup && ageGroups.some(group => group.id === result.ageGroup)) setAgeGroup(result.ageGroup);
+        if (result.rewardPath && rewardPaths.some(path => path.id === result.rewardPath)) setRewardPath(result.rewardPath);
+        setReferralCode(result.referralCode);
+        setMemberAccessToken(accessToken);
+      })
+      .catch(cause => {
+        console.error('[WaitlistSite] Could not restore returning member details:', cause);
+        setSavedMemberError(cause instanceof Error ? cause.message : 'Your saved details could not be restored.');
+      })
+      .finally(() => setRestoringMember(false));
   }, []);
 
   const recordAnalytics = useCallback((eventType: string, selectedAgeGroup?: string, trackTitle?: string) => {
@@ -378,6 +459,7 @@ export default function Home() {
           campaign: query.get('utm_campaign') || '',
           source: query.get('utm_source') || query.get('ref') ? 'campaign' : 'waitlist-website',
           landingPage: window.location.pathname,
+          memberAccessToken: window.localStorage.getItem('waitlist-member-token') || '',
           website
         })
       });
@@ -484,6 +566,12 @@ export default function Home() {
           <label className="check-row age-row"><input type="checkbox" checked={adultConfirmedAtEntry} onChange={event => setAdultConfirmedAtEntry(event.target.checked)} /><span>I confirm I am 18 or older.</span></label>
           <p className="privacy-note">Music starts softly after you continue, then gradually gets louder. You can pause it anytime. We count anonymous site opens and age-group track listens to learn what resonates; activity is not linked to signup details. The area heat map uses only the neighbourhood members choose to share when joining.</p>
           <button className="button button-primary" disabled={!siteContentLoaded || !ageGroup || !adultConfirmedAtEntry} onClick={enterSite}>{siteContentLoaded ? 'Enter & play' : 'Loading…'} <span>↗</span></button>
+          {!restoringMember && savedMemberProfile && <aside className="returning-member-card">
+            <p className="eyebrow"><span /> WELCOME BACK{savedMemberProfile.fullName ? `, ${savedMemberProfile.fullName.split(' ')[0].toUpperCase()}` : ''}</p>
+            <p>You’re already on the waitlist. Your details have been restored on this device — there’s no need to sign up again.</p>
+            <Link className="button button-outline" href={widgetUrl}>Continue to my waitlist dashboard <span>↗</span></Link>
+          </aside>}
+          {savedMemberError && <p className="error" role="alert">{savedMemberError}</p>}
           {!currentAgeTrack && siteContentLoaded && <p className="inline-note">No track is assigned to this age range yet. You can still continue.</p>}
         </section>
       )}
@@ -585,6 +673,7 @@ export default function Home() {
               <label>How often do you usually order? <span className="optional">OPTIONAL</span><select value={frequency} onChange={event => setFrequency(event.target.value)}><option value="">Choose one</option>{frequencies.map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></label>
               <label className="check-row age-row"><input type="checkbox" required checked={ageConfirmed} onChange={event => setAgeConfirmed(event.target.checked)} /><span>I confirm that I am of legal drinking age. This is not a substitute for age checks when purchasing or receiving alcohol.</span></label>
               <label className="trap" aria-hidden="true">Website<input tabIndex={-1} autoComplete="off" value={website} onChange={event => setWebsite(event.target.value)} /></label>
+              {savedMemberProfile && <p className="inline-note">Your saved details are filled in. You’re already registered, so use your dashboard instead of joining again unless you need to update this area.</p>}
               <p className="privacy-note">We’ll only use the contact channels you selected for early-access updates. You can opt out later.</p>
               <div className="button-row"><button type="button" className="button button-ghost" onClick={() => { setError(''); setStep(1); }}>← Back</button><button className="button button-primary" disabled={busy}>{busy ? 'Joining…' : 'Join early access'} <span>↗</span></button></div>
               {error && <p className="error" role="alert">{error}</p>}

@@ -20,7 +20,7 @@ async function getMemberFromToken(request: Request, database: NonNullable<Return
   if (!memberTokenPattern.test(token)) return { member: null, error: null };
   const tokenHash = createHash('sha256').update(token).digest('hex');
   const result = await database.from('market_waitlist')
-    .select('id,referral_code,age_group,reward_path')
+    .select('id,referral_code,age_group,reward_path,full_name,email,phone,country,county,city,area,landmark,product_interests,order_frequency,email_updates_consent,sms_consent,whatsapp_consent,preferred_contact_method')
     .eq('member_access_token_hash', tokenHash)
     .limit(1)
     .maybeSingle();
@@ -53,6 +53,22 @@ export async function GET(request: Request) {
     referralCode: member.referral_code,
     ageGroup: member.age_group,
     rewardPath: member.reward_path,
+    profile: {
+      fullName: member.full_name,
+      email: member.email,
+      phone: member.phone,
+      country: member.country,
+      county: member.county,
+      city: member.city,
+      area: member.area,
+      landmark: member.landmark,
+      productInterests: member.product_interests || [],
+      orderFrequency: member.order_frequency,
+      emailConsent: member.email_updates_consent,
+      smsConsent: member.sms_consent,
+      whatsappConsent: member.whatsapp_consent,
+      preferredContactMethod: member.preferred_contact_method
+    },
     referralsJoined: (credits.data || []).length,
     tokensEarned: earned,
     tokensAvailable: Math.max(0, earned - spent),
