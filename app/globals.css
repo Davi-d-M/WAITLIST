@@ -19,6 +19,11 @@ button{cursor:pointer}
 .returning-member-card .eyebrow{margin-bottom:8px;color:var(--primary)}
 .returning-member-card>p:not(.eyebrow){margin:0;color:var(--muted);font-size:12px;line-height:1.7}
 .returning-member-card .button{margin-top:12px;min-height:44px}
+.recovery-form{display:grid;gap:12px;margin-top:16px}
+.recovery-form label{display:block;color:#34443b;font-size:10px;font-weight:800}
+.recovery-form input{display:block;width:100%;height:46px;margin-top:7px;padding:0 12px;border:1px solid var(--line);border-radius:3px;background:#fbfcf9;color:var(--ink)}
+.recovery-form input:focus{border-color:var(--primary);outline:0;box-shadow:0 0 0 3px #d91c1c26}
+.recovery-form .button{width:100%;margin-top:2px}
 .music-control{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 0;border-bottom:1px solid var(--line);font-size:10px;color:var(--muted)}
 .music-control button{border:1px solid var(--line);border-radius:20px;background:#fff;padding:7px 12px;color:var(--ink);font-size:10px;font-weight:700}
 .hero{min-height:calc(100vh - 150px);display:grid;grid-template-columns:1fr 1fr;align-items:center;position:relative;padding:70px 0 112px}

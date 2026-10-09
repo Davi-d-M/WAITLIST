@@ -25,6 +25,7 @@ const frequencies = [
 ];
 
 type SignupResult = { success?: boolean; alreadyJoined?: boolean; serviceAreaStatus?: 'in_area' | 'outside_area' | 'unknown'; referralCode?: string; memberAccessToken?: string; error?: string };
+type RestoreMemberResult = { success?: boolean; memberToken?: string; referralCode?: string; error?: string };
 type Location = { country: string; county: string; city: string; area: string; verified: boolean; accuracy: number | null };
 type RewardPath = 'wine' | 'adventure' | 'music';
 type SavedMemberProfile = {
@@ -157,6 +158,11 @@ export default function Home() {
   const [savedMemberProfile, setSavedMemberProfile] = useState<SavedMemberProfile | null>(null);
   const [restoringMember, setRestoringMember] = useState(true);
   const [savedMemberError, setSavedMemberError] = useState('');
+  const [recoveryName, setRecoveryName] = useState('');
+  const [recoveryPhoneLastThree, setRecoveryPhoneLastThree] = useState('');
+  const [recoveringMember, setRecoveringMember] = useState(false);
+  const [recoveryError, setRecoveryError] = useState('');
+  const [memberRecovered, setMemberRecovered] = useState(false);
   const shareDialogCloseRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -483,6 +489,32 @@ export default function Home() {
     }
   };
 
+  const restoreMember = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setRecoveryError('');
+    setRecoveringMember(true);
+    try {
+      const response = await fetch('/api/member/restore', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fullName: recoveryName, phoneLastThree: recoveryPhoneLastThree })
+      });
+      const result = await response.json() as RestoreMemberResult;
+      if (!response.ok || !result.memberToken || !result.referralCode) {
+        throw new Error(result.error || 'Your waitlist page could not be restored. Please try again.');
+      }
+      window.localStorage.setItem('waitlist-member-token', result.memberToken);
+      window.localStorage.setItem('waitlist-referral-code', result.referralCode);
+      setMemberAccessToken(result.memberToken);
+      setReferralCode(result.referralCode);
+      setMemberRecovered(true);
+    } catch (cause) {
+      setRecoveryError(cause instanceof Error ? cause.message : 'Your waitlist page could not be restored. Please try again.');
+    } finally {
+      setRecoveringMember(false);
+    }
+  };
+
   const changeCity = (city: string) => {
     setLocation(current => ({
       ...current,
@@ -572,6 +604,23 @@ export default function Home() {
             <Link className="button button-outline" href={widgetUrl}>Continue to my waitlist dashboard <span>↗</span></Link>
           </aside>}
           {savedMemberError && <p className="error" role="alert">{savedMemberError}</p>}
+          {!restoringMember && !savedMemberProfile && <aside className="returning-member-card recovery-card">
+            <p className="eyebrow"><span /> ALREADY JOINED?</p>
+            {memberRecovered ? <>
+              <p>Your waitlist page is ready. Your referrals, tokens and rewards are saved to your existing entry.</p>
+              <Link className="button button-outline" href={widgetUrl}>Open my waitlist page <span>↗</span></Link>
+            </> : <>
+              <p>Find your existing waitlist page without signing up again. Enter the name on your signup and the last three digits of the phone number you used.</p>
+              <form className="recovery-form" onSubmit={restoreMember}>
+                <label>Your signup name<input autoComplete="name" maxLength={120} value={recoveryName} onChange={event => setRecoveryName(event.target.value)} required /></label>
+                <label>Last three phone digits<input autoComplete="off" inputMode="numeric" pattern="[0-9]{3}" maxLength={3} value={recoveryPhoneLastThree} onChange={event => setRecoveryPhoneLastThree(event.target.value.replace(/\D/g, '').slice(0, 3))} required /></label>
+                {recoveryError && <p className="error" role="alert">{recoveryError}</p>}
+                <button className="button button-primary" type="submit" disabled={recoveringMember || recoveryName.trim().length < 2 || recoveryPhoneLastThree.length !== 3}>
+                  {recoveringMember ? 'Finding your page…' : 'Find my waitlist page'} <span>↗</span>
+                </button>
+              </form>
+            </>}
+          </aside>}
           {!currentAgeTrack && siteContentLoaded && <p className="inline-note">No track is assigned to this age range yet. You can still continue.</p>}
         </section>
       )}

@@ -283,9 +283,20 @@ export async function POST(request: Request) {
     const storedHash = typeof existing.member_access_token_hash === 'string'
       ? Buffer.from(existing.member_access_token_hash, 'hex')
       : Buffer.alloc(0);
-    const tokenMatches = /^[A-Za-z0-9_-]{43}$/.test(presentedToken)
+    let tokenMatches = /^[A-Za-z0-9_-]{43}$/.test(presentedToken)
       && storedHash.length === presentedHash.length
       && timingSafeEqual(storedHash, presentedHash);
+    if (!tokenMatches && /^[A-Za-z0-9_-]{43}$/.test(presentedToken)) {
+      const { data: session, error: sessionError } = await database.from('waitlist_member_sessions')
+        .select('member_id')
+        .eq('token_hash', presentedHash.toString('hex'))
+        .maybeSingle();
+      if (sessionError) {
+        console.error('[Waitlist] Could not verify the returning member session:', sessionError);
+        return NextResponse.json({ error: 'We could not verify your saved waitlist session. Please try again.' }, { status: 503 });
+      }
+      tokenMatches = session?.member_id === existing.id;
+    }
     if (!tokenMatches) {
       return NextResponse.json({
         error: 'You are already on the early-access list for this area. Open your personal dashboard on the device where you joined; we did not create another signup or change your account.'

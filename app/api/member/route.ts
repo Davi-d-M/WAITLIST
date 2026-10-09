@@ -15,16 +15,31 @@ function createDatabase() {
     : null;
 }
 
-async function getMemberFromToken(request: Request, database: NonNullable<ReturnType<typeof createDatabase>>) {
-  const token = request.headers.get('authorization')?.replace(/^Bearer\s+/i, '').trim() || '';
+async function getMemberByToken(database: NonNullable<ReturnType<typeof createDatabase>>, token: string) {
   if (!memberTokenPattern.test(token)) return { member: null, error: null };
   const tokenHash = createHash('sha256').update(token).digest('hex');
-  const result = await database.from('market_waitlist')
+  const direct = await database.from('market_waitlist')
     .select('id,referral_code,age_group,reward_path,full_name,email,phone,country,county,city,area,landmark,product_interests,order_frequency,email_updates_consent,sms_consent,whatsapp_consent,preferred_contact_method')
     .eq('member_access_token_hash', tokenHash)
     .limit(1)
     .maybeSingle();
-  return { member: result.data, error: result.error };
+  if (direct.error || direct.data) return { member: direct.data, error: direct.error };
+  const session = await database.from('waitlist_member_sessions')
+    .select('member_id')
+    .eq('token_hash', tokenHash)
+    .maybeSingle();
+  if (session.error || !session.data) return { member: null, error: session.error };
+  const member = await database.from('market_waitlist')
+    .select('id,referral_code,age_group,reward_path,full_name,email,phone,country,county,city,area,landmark,product_interests,order_frequency,email_updates_consent,sms_consent,whatsapp_consent,preferred_contact_method')
+    .eq('id', session.data.member_id)
+    .maybeSingle();
+  if (!member.data && !member.error) return { member: null, error: null };
+  return { member: member.data, error: member.error };
+}
+
+async function getMemberFromToken(request: Request, database: NonNullable<ReturnType<typeof createDatabase>>) {
+  const token = request.headers.get('authorization')?.replace(/^Bearer\s+/i, '').trim() || '';
+  return getMemberByToken(database, token);
 }
 
 export async function GET(request: Request) {
@@ -34,7 +49,7 @@ export async function GET(request: Request) {
   const { member, error: memberError } = await getMemberFromToken(request, database);
   if (memberError || !member) {
     if (memberError) console.error('[WaitlistMember] Could not authenticate member dashboard:', memberError);
-    return NextResponse.json({ error: memberError ? 'Member progress is temporarily unavailable.' : 'Open this dashboard from the device where you joined, or join the waitlist to set it up.' }, { status: memberError ? 503 : 401 });
+    return NextResponse.json({ error: memberError ? 'Member progress is temporarily unavailable.' : 'Use the member recovery form on the waitlist homepage to reopen your existing page.' }, { status: memberError ? 503 : 401 });
   }
 
   const [credits, claims] = await Promise.all([
@@ -94,14 +109,10 @@ export async function POST(request: Request) {
   const database = createDatabase();
   if (!database) return NextResponse.json({ error: 'Souvenir requests are temporarily unavailable.' }, { status: 503 });
 
-  const { data: member, error: memberError } = await database.from('market_waitlist')
-    .select('id,referral_code')
-    .eq('member_access_token_hash', createHash('sha256').update(body.memberToken).digest('hex'))
-    .limit(1)
-    .maybeSingle();
+  const { member, error: memberError } = await getMemberByToken(database, body.memberToken);
   if (memberError || !member) {
     if (memberError) console.error('[WaitlistMember] Could not authenticate souvenir request:', memberError);
-    return NextResponse.json({ error: 'This dashboard session is no longer valid. Join again from this device to refresh it.' }, { status: memberError ? 503 : 401 });
+    return NextResponse.json({ error: 'This dashboard session is no longer valid. Use the member recovery form on the waitlist homepage to reopen your existing page.' }, { status: memberError ? 503 : 401 });
   }
   const { data, error } = await database.rpc('request_waitlist_reward', {
     p_referral_code: member.referral_code,
