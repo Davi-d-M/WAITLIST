@@ -36,6 +36,7 @@ export default function WaitlistWidgetPage() {
   const [error, setError] = useState('');
   const [busyReward, setBusyReward] = useState('');
   const [loading, setLoading] = useState(true);
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
   const [isAndroid, setIsAndroid] = useState(false);
   const { installPromptAvailable, isInstalled, install: promptInstall } = usePwaInstall();
@@ -86,16 +87,57 @@ export default function WaitlistWidgetPage() {
 
   const share = async () => {
     if (!shareUrl) return;
+    setError('');
+    setNotice('');
+    setShareDialogOpen(true);
+  };
+
+  const shareMessage = useMemo(() => {
+    const invitation = `Join me on the Online Bar early-access list. I earn ${content.tokens_per_referral} tokens when friends join through my link.`;
+    return `${invitation} ${shareUrl}`;
+  }, [content.tokens_per_referral, shareUrl]);
+
+  const shareToApp = async (app: 'instagram' | 'tiktok' | 'snapchat') => {
+    const appUrl = app === 'instagram'
+      ? 'https://www.instagram.com/'
+      : app === 'tiktok'
+        ? 'https://www.tiktok.com/'
+        : 'https://www.snapchat.com/';
+    window.open(appUrl, '_blank', 'noopener,noreferrer');
     try {
-      if (navigator.share) await navigator.share({ title: 'Your Online Bar invite', text: 'Join the early-access list with my personal invite link.', url: shareUrl });
-      else {
-        await navigator.clipboard.writeText(shareUrl);
-        setNotice('Your invite link is copied and ready to share.');
-      }
+      await navigator.clipboard.writeText(shareMessage);
+      const destination = app === 'instagram' ? 'Instagram DM, story or bio' : app === 'tiktok' ? 'TikTok message, caption or bio' : 'Snapchat chat';
+      setNotice(`Your invite is copied. Paste it into your ${destination} to share.`);
     } catch (cause) {
-      if (cause instanceof Error && cause.name !== 'AbortError') setError('We could not share the link from this browser.');
+      console.error(`[WaitlistWidget] Could not copy the invite for ${app}:`, cause);
+      setError(`Copy your invite link here, then paste it into ${app === 'instagram' ? 'Instagram' : app === 'tiktok' ? 'TikTok' : 'Snapchat'}.`);
     }
   };
+
+  const copyInvite = async () => {
+    try {
+      await navigator.clipboard.writeText(shareMessage);
+      setNotice('Your invite message and personal link are copied and ready to share.');
+      setError('');
+    } catch (cause) {
+      console.error('[WaitlistWidget] Could not copy the invite message:', cause);
+      setError('We could not copy the invite. Allow clipboard access or copy your personal invite link manually.');
+    }
+  };
+
+  const shareWithDevice = async () => {
+    try {
+      await navigator.share({ title: 'Your Online Bar invite', text: shareMessage, url: shareUrl });
+    } catch (cause) {
+      if (cause instanceof Error && cause.name !== 'AbortError') {
+        console.error('[WaitlistWidget] Could not open the device share sheet:', cause);
+        setError('Your device sharing menu could not be opened. Choose an app above or copy your invite.');
+      }
+    }
+  };
+
+  const supportsNativeShare = typeof navigator !== 'undefined'
+    && typeof Reflect.get(navigator, 'share') === 'function';
 
   const install = async () => {
     try {
@@ -167,7 +209,7 @@ export default function WaitlistWidgetPage() {
         <article><span>TOKENS AVAILABLE</span><b>{progress.tokensAvailable}</b></article>
       </section>
       <div className="widget-actions">
-        <button className="button button-primary" type="button" onClick={() => void share()}>{shareLabel(progress.ageGroup)} <span>↗</span></button>
+        <button className="button button-primary" type="button" onClick={() => void share()}>{shareLabel(progress.ageGroup).toUpperCase()} <span>↗</span></button>
       </div>
       {notice && <p role="status" className="inline-note">{notice}</p>}
       {error && <p role="alert" className="error">{error}</p>}
@@ -187,6 +229,30 @@ export default function WaitlistWidgetPage() {
       </section>
       {!!progress.claims.length && <section className="widget-claims"><h2>Your souvenir requests</h2><ul>{progress.claims.map(claim => <li key={claim.id}><b>{rewards.find(reward => reward.id === claim.reward_id)?.name || 'Souvenir'}</b><span>{claim.tokens_spent} tokens · {claim.status}</span></li>)}</ul></section>}
       <footer className="site-footer"><Link href="/">ONLINE BAR</Link><span>YOUR INVITE CODE · {progress.referralCode}</span><span>GOOD TIMES, DELIVERED.</span></footer>
+      {shareDialogOpen && <div className="share-dialog-backdrop" onClick={() => setShareDialogOpen(false)}>
+        <section aria-labelledby="widget-share-title" aria-modal="true" className="share-dialog" onClick={event => event.stopPropagation()} role="dialog">
+          <button aria-label="Close sharing options" className="share-dialog-close" onClick={() => setShareDialogOpen(false)} type="button">×</button>
+          <p className="eyebrow"><span /> PASS THE GOOD TIMES ON</p>
+          <h2 id="widget-share-title">{shareLabel(progress.ageGroup)}</h2>
+          <p className="share-dialog-copy">Choose an app. Your personal invite link is included so friends who join can earn you {content.tokens_per_referral} tokens.</p>
+          <div className="share-platform-grid">
+            <a href={`https://wa.me/?text=${encodeURIComponent(shareMessage)}`} rel="noreferrer" target="_blank">WhatsApp</a>
+            <button onClick={() => void shareToApp('instagram')} type="button">Instagram</button>
+            <button onClick={() => void shareToApp('tiktok')} type="button">TikTok</button>
+            <a href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareMessage)}`} rel="noreferrer" target="_blank">X</a>
+            <button onClick={() => void shareToApp('snapchat')} type="button">Snapchat</button>
+            <a href={`https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareLabel(progress.ageGroup))}`} rel="noreferrer" target="_blank">Telegram</a>
+            <a href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`} rel="noreferrer" target="_blank">Facebook</a>
+            <a href={`mailto:?subject=${encodeURIComponent('Join me on Online Bar early access')}&body=${encodeURIComponent(shareMessage)}`}>Email</a>
+            <a href={`sms:?body=${encodeURIComponent(shareMessage)}`}>Text message</a>
+            {supportsNativeShare && <button className="share-platform-more" onClick={() => void shareWithDevice()} type="button">More apps on my phone…</button>}
+            <button className="share-platform-copy" onClick={() => void copyInvite()} type="button">Copy invite</button>
+          </div>
+          <p className="share-dialog-footnote">Instagram, TikTok and Snapchat may ask you to paste your copied invite into a message, caption, story or bio. “More apps” opens the sharing options supported by your phone.</p>
+          {notice && <p className="inline-note" role="status">{notice}</p>}
+          {error && <p className="error" role="alert">{error}</p>}
+        </section>
+      </div>}
     </main>
   );
 }

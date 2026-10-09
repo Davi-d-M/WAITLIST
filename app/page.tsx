@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 
 const areasByCity: Record<string, { county: string; areas: string[] }> = {
@@ -99,6 +99,9 @@ function countdownParts(launchAt: string | null, now: number) {
 export default function Home() {
   const audioRef = useRef<HTMLAudioElement>(null);
   const musicFadeRef = useRef<number | null>(null);
+  const analyticsSessionRef = useRef<string | null>(null);
+  const pageOpenRecordedRef = useRef(false);
+  const musicQualifiedRef = useRef(false);
   const [siteContent, setSiteContent] = useState<SiteContent>(defaultSiteContent);
   const [siteContentLoaded, setSiteContentLoaded] = useState(false);
   const [siteRewards, setSiteRewards] = useState<SiteReward[]>([]);
@@ -153,7 +156,37 @@ export default function Home() {
       });
   }, []);
 
+  const recordAnalytics = useCallback((eventType: string, selectedAgeGroup?: string, trackTitle?: string) => {
+    let sessionId = analyticsSessionRef.current;
+    if (!sessionId) {
+      try {
+        sessionId = window.sessionStorage.getItem('waitlist-analytics-session') || crypto.randomUUID();
+        window.sessionStorage.setItem('waitlist-analytics-session', sessionId);
+      } catch (cause) {
+        console.error('[WaitlistSite] Could not save the anonymous analytics session:', cause);
+        return;
+      }
+      analyticsSessionRef.current = sessionId;
+    }
+    void fetch('/api/analytics', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ eventType, sessionId, ageGroup: selectedAgeGroup || null, trackTitle: trackTitle || null })
+    }).then(async response => {
+      if (!response.ok) {
+        const result = await response.json() as { error?: string };
+        throw new Error(result.error || 'The anonymous analytics event was not recorded.');
+      }
+    }).catch(cause => {
+      console.error('[WaitlistSite] Could not record anonymous site analytics:', cause);
+    });
+  }, []);
+
   useEffect(() => {
+    if (!pageOpenRecordedRef.current) {
+      pageOpenRecordedRef.current = true;
+      recordAnalytics('page_open');
+    }
     setNow(Date.now());
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
     if ('serviceWorker' in navigator) {
@@ -162,7 +195,7 @@ export default function Home() {
       });
     }
     return () => window.clearInterval(timer);
-  }, []);
+  }, [recordAnalytics]);
 
   useEffect(() => () => {
     if (musicFadeRef.current !== null) window.clearInterval(musicFadeRef.current);
@@ -201,14 +234,16 @@ export default function Home() {
   const selectedAgeGroup = ageGroups.find(group => group.id === ageGroup);
   const currentAgeTrack = ageGroup ? siteContent.age_group_tracks[ageGroup] : undefined;
 
-  const startMusic = (audio: HTMLAudioElement, trackUrl?: string) => {
+  const startMusic = (audio: HTMLAudioElement, trackUrl?: string, trackTitle?: string) => {
     if (musicFadeRef.current !== null) window.clearInterval(musicFadeRef.current);
     musicFadeRef.current = null;
+    musicQualifiedRef.current = false;
     if (trackUrl) audio.src = trackUrl;
     audio.volume = 0.03;
     void audio.play()
       .then(() => {
         setMusicPlaying(true);
+        recordAnalytics('music_started', ageGroup, trackTitle || currentAgeTrack?.title);
         musicFadeRef.current = window.setInterval(() => {
           const nextVolume = Math.min(audio.volume + 0.015, 0.3);
           audio.volume = nextVolume;
@@ -226,10 +261,11 @@ export default function Home() {
 
   const enterSite = () => {
     if (!selectedAgeGroup || !adultConfirmedAtEntry) return;
+    recordAnalytics('age_group_selected', ageGroup);
     setAgeGateComplete(true);
     setMusicNotice('');
     if (currentAgeTrack && audioRef.current) {
-      startMusic(audioRef.current, currentAgeTrack.url);
+      startMusic(audioRef.current, currentAgeTrack.url, currentAgeTrack.title);
     }
   };
 
@@ -244,7 +280,7 @@ export default function Home() {
       return;
     }
     setMusicNotice('');
-    startMusic(audio);
+    startMusic(audio, undefined, currentAgeTrack?.title);
   };
 
   const requestLocation = () => {
@@ -428,7 +464,13 @@ export default function Home() {
   return (
     <main className="site-shell">
       <nav className="topbar"><Link className="brand" href="/" aria-label="Online Bar home"><span className="brand-mark">OB</span><span>ONLINE BAR<span className="brand-sub">GOOD TIMES, DELIVERED</span></span></Link><span className="top-status"><i /> EARLY ACCESS</span></nav>
-      <audio ref={audioRef} loop preload="none" onEnded={() => {
+      <audio ref={audioRef} loop preload="none" onTimeUpdate={event => {
+        const audio = event.currentTarget;
+        if (!musicQualifiedRef.current && currentAgeTrack && audio.duration > 0 && audio.currentTime / audio.duration >= 0.8) {
+          musicQualifiedRef.current = true;
+          recordAnalytics('music_heard_80', ageGroup, currentAgeTrack.title);
+        }
+      }} onEnded={() => {
         if (musicFadeRef.current !== null) window.clearInterval(musicFadeRef.current);
         musicFadeRef.current = null;
         setMusicPlaying(false);
@@ -440,7 +482,7 @@ export default function Home() {
           <p>This experience is for adults of legal drinking age. Choose an age range; we do not ask for your date of birth. Your range is only saved if you join the waitlist.</p>
           <label className="age-gate-select">Your age range<select value={ageGroup} onChange={event => setAgeGroup(event.target.value)}><option value="">Choose an adult age range</option>{ageGroups.map(group => <option key={group.id} value={group.id}>{group.label}</option>)}</select></label>
           <label className="check-row age-row"><input type="checkbox" checked={adultConfirmedAtEntry} onChange={event => setAdultConfirmedAtEntry(event.target.checked)} /><span>I confirm I am 18 or older.</span></label>
-          <p className="privacy-note">Music starts softly after you continue, then gradually gets louder. You can pause it anytime.</p>
+          <p className="privacy-note">Music starts softly after you continue, then gradually gets louder. You can pause it anytime. We count anonymous site opens and age-group track listens to learn what resonates; activity is not linked to signup details. The area heat map uses only the neighbourhood members choose to share when joining.</p>
           <button className="button button-primary" disabled={!siteContentLoaded || !ageGroup || !adultConfirmedAtEntry} onClick={enterSite}>{siteContentLoaded ? 'Enter & play' : 'Loading…'} <span>↗</span></button>
           {!currentAgeTrack && siteContentLoaded && <p className="inline-note">No track is assigned to this age range yet. You can still continue.</p>}
         </section>

@@ -440,5 +440,109 @@ $$;
 REVOKE ALL ON FUNCTION public.get_waitlist_intelligence() FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.get_waitlist_intelligence() TO service_role;
 
+CREATE TABLE IF NOT EXISTS public.waitlist_site_analytics_events (
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    session_id UUID NOT NULL,
+    event_type TEXT NOT NULL CHECK (event_type IN ('page_open', 'age_group_selected', 'music_started', 'music_heard_80')),
+    age_group TEXT CHECK (age_group IS NULL OR age_group IN ('18_20', '21_24', '25_34', '35_44', '45_plus')),
+    track_title TEXT CHECK (track_title IS NULL OR length(track_title) <= 120),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CHECK (
+        (event_type IN ('music_started', 'music_heard_80') AND age_group IS NOT NULL AND track_title IS NOT NULL)
+        OR (event_type NOT IN ('music_started', 'music_heard_80') AND track_title IS NULL)
+    )
+);
+
+CREATE INDEX IF NOT EXISTS waitlist_site_analytics_created_type_idx
+    ON public.waitlist_site_analytics_events (created_at DESC, event_type);
+CREATE INDEX IF NOT EXISTS waitlist_site_analytics_music_idx
+    ON public.waitlist_site_analytics_events (age_group, track_title, created_at DESC)
+    WHERE event_type IN ('music_started', 'music_heard_80');
+
+ALTER TABLE public.waitlist_site_analytics_events ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.waitlist_site_analytics_events FROM PUBLIC, anon, authenticated;
+GRANT INSERT, SELECT ON public.waitlist_site_analytics_events TO service_role;
+GRANT USAGE, SELECT ON SEQUENCE public.waitlist_site_analytics_events_id_seq TO service_role;
+
+CREATE OR REPLACE FUNCTION public.get_waitlist_site_analytics(p_since TIMESTAMPTZ DEFAULT now() - INTERVAL '30 days')
+RETURNS JSONB
+LANGUAGE SQL
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+    SELECT jsonb_build_object(
+        'page_opens', (
+            SELECT count(*)::BIGINT
+            FROM public.waitlist_site_analytics_events
+            WHERE event_type = 'page_open' AND created_at >= COALESCE(p_since, now() - INTERVAL '30 days')
+        ),
+        'unique_visitors', (
+            SELECT count(DISTINCT session_id)::BIGINT
+            FROM public.waitlist_site_analytics_events
+            WHERE event_type = 'page_open' AND created_at >= COALESCE(p_since, now() - INTERVAL '30 days')
+        ),
+        'age_groups', COALESCE((
+            SELECT jsonb_agg(jsonb_build_object('group', bands.group_id, 'label', bands.label, 'visitors', bands.visitors)
+                ORDER BY bands.sort_order)
+            FROM (
+                SELECT age_bands.group_id, age_bands.label, age_bands.sort_order,
+                    count(DISTINCT events.session_id)::BIGINT AS visitors
+                FROM (VALUES
+                    ('18_20', '18–20', 1),
+                    ('21_24', '21–24', 2),
+                    ('25_34', '25–34', 3),
+                    ('35_44', '35–44', 4),
+                    ('45_plus', '45+', 5)
+                ) AS age_bands(group_id, label, sort_order)
+                LEFT JOIN public.waitlist_site_analytics_events AS events
+                    ON events.age_group = age_bands.group_id
+                    AND events.event_type = 'age_group_selected'
+                    AND events.created_at >= COALESCE(p_since, now() - INTERVAL '30 days')
+                GROUP BY age_bands.group_id, age_bands.label, age_bands.sort_order
+            ) AS bands
+        ), '[]'::JSONB),
+        'music', COALESCE((
+            SELECT jsonb_agg(jsonb_build_object(
+                'age_group', music.age_group,
+                'track_title', music.track_title,
+                'starts', music.starts,
+                'heard_80', music.heard_80,
+                'listeners', music.listeners
+            ) ORDER BY music.age_group, music.heard_80::NUMERIC / GREATEST(music.starts, 1) DESC, music.starts DESC)
+            FROM (
+                SELECT age_group, track_title,
+                    count(*) FILTER (WHERE event_type = 'music_started')::BIGINT AS starts,
+                    count(*) FILTER (WHERE event_type = 'music_heard_80')::BIGINT AS heard_80,
+                    count(DISTINCT session_id) FILTER (WHERE event_type = 'music_started')::BIGINT AS listeners
+                FROM public.waitlist_site_analytics_events
+                WHERE event_type IN ('music_started', 'music_heard_80')
+                    AND created_at >= COALESCE(p_since, now() - INTERVAL '30 days')
+                GROUP BY age_group, track_title
+            ) AS music
+        ), '[]'::JSONB),
+        'locations', COALESCE((
+            SELECT jsonb_agg(jsonb_build_object(
+                'country', areas.country,
+                'county', areas.county,
+                'city', areas.city,
+                'area', areas.area,
+                'signups', areas.signups
+            ) ORDER BY areas.signups DESC, areas.city, areas.area)
+            FROM (
+                SELECT country, county, city, area, count(*)::BIGINT AS signups
+                FROM public.market_waitlist
+                WHERE created_at >= COALESCE(p_since, now() - INTERVAL '30 days')
+                GROUP BY country, county, city, area
+                ORDER BY count(*) DESC
+                LIMIT 100
+            ) AS areas
+        ), '[]'::JSONB)
+    );
+$$;
+
+REVOKE ALL ON FUNCTION public.get_waitlist_site_analytics(TIMESTAMPTZ) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.get_waitlist_site_analytics(TIMESTAMPTZ) TO service_role;
+
 NOTIFY pgrst, 'reload schema';
 COMMIT;
