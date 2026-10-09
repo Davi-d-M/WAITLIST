@@ -74,6 +74,6 @@ export async function GET() {
     return NextResponse.json({ error: 'Souvenir and widget content could not be loaded. Apply the waitlist site migration.' }, { status: 503 });
   }
   return NextResponse.json({ content: { ...content, age_group_tracks: ageGroupTracks }, rewards: rewards || [] }, {
-    headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300' }
+    headers: { 'Cache-Control': 'private, no-store, max-age=0' }
   });
 }
