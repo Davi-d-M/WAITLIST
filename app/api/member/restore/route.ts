@@ -12,6 +12,11 @@ function createDatabase() {
     : null;
 }
 
+function needsRecoveryMigration(error: { code?: string; message?: string }) {
+  return ['42P01', '42703', '42501', 'PGRST202', 'PGRST204', 'PGRST205'].includes(error.code || '')
+    || /restore_waitlist_member_session|waitlist_member_sessions|waitlist_member_restore_attempts/i.test(error.message || '');
+}
+
 export async function POST(request: Request) {
   const origin = request.headers.get('origin');
   if (origin && origin !== new URL(request.url).origin) {
@@ -37,10 +42,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Waitlist recovery is temporarily unavailable. Please try again later.' }, { status: 503 });
   }
 
-  const forwardedFor = request.headers.get('x-forwarded-for')?.split(',').at(-1)?.trim();
-  const clientAddress = request.headers.get('x-real-ip')?.trim() || forwardedFor;
+  const forwardedFor = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
+  const clientAddress = request.headers.get('x-real-ip')?.trim()
+    || request.headers.get('x-vercel-forwarded-for')?.trim()
+    || forwardedFor;
   if (!clientAddress) {
-    return NextResponse.json({ error: 'Waitlist recovery is temporarily unavailable. Please try again later.' }, { status: 503 });
+    console.error('[WaitlistMember] Recovery was blocked because the hosting platform did not provide a client address for throttling.');
+    return NextResponse.json({ error: 'Waitlist recovery could not verify this request. Refresh the page and try again.' }, { status: 503 });
   }
 
   const sessionToken = randomBytes(32).toString('base64url');
@@ -55,6 +63,11 @@ export async function POST(request: Request) {
 
   if (error) {
     console.error('[WaitlistMember] Could not restore member session:', error);
+    if (needsRecoveryMigration(error)) {
+      return NextResponse.json({
+        error: 'Account recovery has not been enabled in the waitlist database yet. The site administrator must apply the latest supabase/WAITLIST_SITE_MIGRATION.sql to the same Supabase project used by this site, then retry. Your existing signup has not been changed.'
+      }, { status: 503 });
+    }
     return NextResponse.json({ error: 'Waitlist recovery is temporarily unavailable. Please try again later.' }, { status: 503 });
   }
 
