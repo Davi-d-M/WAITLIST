@@ -1,4 +1,3 @@
-BEGIN;
 
 CREATE TABLE IF NOT EXISTS public.waitlist_member_sessions (
     token_hash TEXT PRIMARY KEY CHECK (length(token_hash) = 64),
