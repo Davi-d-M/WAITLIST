@@ -106,6 +106,19 @@ export default function WaitlistWidgetPage() {
     return `${invitation} ${shareUrl}`;
   }, [content.tokens_per_referral, shareUrl]);
 
+  const installDashboard = async () => {
+    setError('');
+    try {
+      const outcome = await promptInstall();
+      setNotice(outcome === 'accepted'
+        ? 'Your dashboard is installed. Open it from your home screen or app list.'
+        : 'Installation was cancelled. You can install it later from your browser menu.');
+    } catch (cause) {
+      console.error('[WaitlistWidget] Could not install the dashboard:', cause);
+      setError('The install prompt is unavailable in this browser. Follow the steps below to add the dashboard.');
+    }
+  };
+
   const shareToApp = async (app: 'instagram' | 'tiktok' | 'snapchat') => {
     const appUrl = app === 'instagram'
       ? 'https://www.instagram.com/'
@@ -148,16 +161,6 @@ export default function WaitlistWidgetPage() {
   const supportsNativeShare = typeof navigator !== 'undefined'
     && typeof Reflect.get(navigator, 'share') === 'function';
 
-  const install = async () => {
-    try {
-      const choice = await promptInstall();
-      setNotice(choice === 'accepted' ? 'Your countdown dashboard is added to your home screen.' : 'You can add the dashboard to your home screen any time.');
-    } catch (cause) {
-      console.error('[WaitlistWidget] Could not open the home-screen install prompt:', cause);
-      setError('The install prompt could not be opened. Use the browser menu instructions below to add the dashboard.');
-    }
-  };
-
   const requestReward = async (reward: Reward) => {
     if (!progress || !memberToken) return;
     setBusyReward(reward.id);
@@ -196,15 +199,15 @@ export default function WaitlistWidgetPage() {
       <header className="widget-header"><Link className="brand" href="/"><span className="brand-mark">OB</span><span>ONLINE BAR<span className="brand-sub">YOUR EARLY-ACCESS DASHBOARD</span></span></Link><span className="top-status"><i /> 18+ · EARLY ACCESS</span></header>
       {!isInstalled && <section className="install-card" aria-label="Add your countdown dashboard to your home screen">
         <p className="eyebrow"><span /> KEEP YOUR COUNTDOWN CLOSE</p>
-        <h2>Add your OB dashboard to your home screen.</h2>
-        <p>Open it any time to see your live launch countdown, friends who joined and tokens ready to use.</p>
+        <h2>Install your OB dashboard.</h2>
+        <p>This adds a dashboard shortcut you can open for your live countdown, joined friends and tokens.</p>
         {installPromptAvailable
-          ? <button className="button button-primary" type="button" onClick={() => void install()}>Add countdown to my home screen <span>↗</span></button>
+          ? <button className="button button-primary" type="button" onClick={() => void installDashboard()}>Install dashboard <span>↗</span></button>
           : <p className="install-instructions">{isIOS
-            ? 'On iPhone: tap Share in Safari, then choose “Add to Home Screen.”'
+            ? 'On iPhone or iPad: open this page in Safari, tap Share, choose “Add to Home Screen,” then tap “Add.”'
             : isAndroid
-              ? 'On Android: open this page in Chrome, tap the browser menu ⋮, then choose “Install app” or “Add to Home screen.”'
-              : 'Open this page in your browser menu and choose “Install app” or “Add to Home screen” when available.'}</p>}
+              ? 'On Android: open this page in Chrome, tap ⋮, choose “Install app” or “Add to Home screen,” then confirm.'
+              : 'On Chrome: open ⋮ → “Cast, save, and share” → “Install page as app.” On Edge: open ⋯ → “Apps” → “Install this site as an app.” If neither option appears, open this page in Chrome or Edge.'}</p>}
       </section>}
       {contentWarning && <p className="error" role="status">{contentWarning}</p>}
       {isInstalled && <p className="inline-note" role="status">Your OB countdown dashboard is installed. Open it from your home screen any time.</p>}

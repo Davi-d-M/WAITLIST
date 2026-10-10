@@ -8,9 +8,12 @@ export const metadata: Metadata = {
   applicationName: 'OB',
   manifest: '/manifest.webmanifest',
   icons: {
-    icon: '/icon.svg',
-    shortcut: '/icon.svg',
-    apple: '/icon.svg'
+    icon: [
+      { url: '/icon-192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/icon.svg', type: 'image/svg+xml' }
+    ],
+    shortcut: '/icon-192.png',
+    apple: '/icon-192.png'
   }
 };
 
