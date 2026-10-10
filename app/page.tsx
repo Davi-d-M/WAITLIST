@@ -676,7 +676,7 @@ export default function Home() {
               <p>Find your existing waitlist page without signing up again. Enter the name and phone number you used when signing up. Capitalization, spaces and punctuation in your name do not matter.</p>
               <form className="recovery-form" onSubmit={restoreMember}>
                 <label>Your signup name<input autoComplete="name" maxLength={120} value={recoveryName} onChange={event => setRecoveryName(event.target.value)} required /></label>
-                <label>Last three phone digits<input autoComplete="off" inputMode="numeric" pattern="[0-9]{3}" maxLength={3} value={recoveryPhoneLastThree} onChange={event => setRecoveryPhoneLastThree(event.target.value.replace(/\D/g, '').slice(0, 3))} required /></label>
+                <label>Last three phone digits (no spaces)<input autoComplete="off" inputMode="numeric" pattern="[0-9]{3}" maxLength={3} value={recoveryPhoneLastThree} onChange={event => setRecoveryPhoneLastThree(event.target.value.replace(/\D/g, '').slice(0, 3))} required /></label>
                 {recoveryError && <p className="error" role="alert">{recoveryError}</p>}
                 <button className="button button-primary" type="submit" disabled={recoveringMember || recoveryName.trim().length < 2 || recoveryPhoneLastThree.length !== 3}>
                   {recoveringMember ? 'Finding your page…' : 'Find my waitlist page'} <span>↗</span>
@@ -764,7 +764,7 @@ export default function Home() {
               <p className="eyebrow">STEP 02 — YOUR INVITATION</p><h2>Where should we reach you?</h2>              <p className="muted">For {resolvedArea}, {location.city}. Already in our launch coverage? Join and wait for your launch update. Not there yet? Join anyway — we’re coming soon and your area helps us plan.</p>
               <label>Your name<input autoComplete="name" value={fullName} onChange={event => setFullName(event.target.value)} placeholder="Name" maxLength={120} /></label>
               <label>Email address<input required type="email" autoComplete="email" value={email} onChange={event => setEmail(event.target.value)} placeholder="you@example.com" maxLength={254} /></label>
-              <label>Phone number <span className="optional">OPTIONAL UNLESS YOU CHOOSE SMS / WHATSAPP</span><input type="tel" autoComplete="tel" value={phone} onChange={event => setPhone(event.target.value)} placeholder="+254 7XX XXX XXX" maxLength={32} /></label>
+              <label>Phone number <span className="optional">OPTIONAL UNLESS YOU CHOOSE SMS / WHATSAPP</span><input type="tel" autoComplete="tel" value={phone} onChange={event => setPhone(event.target.value.replace(/\s/g, ''))} placeholder="+2547XXXXXXXX" maxLength={32} /></label>
               <p className="inline-note">Age range selected: {selectedAgeGroup?.label}. Your age range is used for launch planning and personalized music.</p>
               <fieldset className="reward-path-fieldset">
                 <legend>What are you here for? <span className="optional">CHOOSE YOUR EXPERIENCE</span></legend>

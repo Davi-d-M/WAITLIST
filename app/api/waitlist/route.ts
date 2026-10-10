@@ -200,7 +200,7 @@ export async function POST(request: Request) {
   if (text(body.website, 200)) return NextResponse.json({ success: true });
 
   const email = text(body.email, 254).toLowerCase();
-  const phone = text(body.phone, 32);
+  const phone = text(body.phone, 32).replace(/\s/g, '');
   const fullName = text(body.fullName, 120);
   const country = text(body.country, 80) || 'Kenya';
   const county = text(body.county, 80);
