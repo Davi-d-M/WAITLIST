@@ -673,7 +673,7 @@ export default function Home() {
               <p>Your waitlist page is ready. Your referrals, tokens and rewards are saved to your existing entry.</p>
               <Link className="button button-outline" href={widgetUrl}>Open my waitlist page <span>↗</span></Link>
             </> : <>
-              <p>Find your existing waitlist page without signing up again. Enter the name on your signup and the last three digits of the phone number you used.</p>
+              <p>Find your existing waitlist page without signing up again. Enter the name and phone number you used when signing up. Capitalization, spaces and punctuation in your name do not matter.</p>
               <form className="recovery-form" onSubmit={restoreMember}>
                 <label>Your signup name<input autoComplete="name" maxLength={120} value={recoveryName} onChange={event => setRecoveryName(event.target.value)} required /></label>
                 <label>Last three phone digits<input autoComplete="off" inputMode="numeric" pattern="[0-9]{3}" maxLength={3} value={recoveryPhoneLastThree} onChange={event => setRecoveryPhoneLastThree(event.target.value.replace(/\D/g, '').slice(0, 3))} required /></label>

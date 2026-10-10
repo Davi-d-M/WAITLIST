@@ -77,7 +77,9 @@ export async function POST(request: Request) {
   }
 
   if (typeof data?.member_id !== 'string') {
-    return NextResponse.json({ error: 'We could not find one matching waitlist entry. Check your name and phone digits, or contact support if you joined without a phone number.' }, { status: 404 });
+    return NextResponse.json({
+      error: 'We could not find one matching waitlist entry. Enter the name you used when signing up and the last three digits of that same phone number. Capitalization, spaces and punctuation do not matter. If you joined without a phone number or still cannot find your entry, contact support.'
+    }, { status: 404 });
   }
 
   const member = await database.from('market_waitlist')

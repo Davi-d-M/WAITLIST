@@ -618,7 +618,8 @@ BEGIN
     SELECT count(*)::INTEGER, (array_agg(id ORDER BY created_at DESC))[1]
     INTO matched_members, recovered_member_id
     FROM public.market_waitlist
-    WHERE lower(trim(full_name)) = lower(trim(p_full_name))
+    WHERE regexp_replace(lower(trim(full_name)), '[[:space:][:punct:]]', '', 'g')
+            = regexp_replace(lower(trim(p_full_name)), '[[:space:][:punct:]]', '', 'g')
         AND right(regexp_replace(coalesce(phone, ''), '[^0-9]', '', 'g'), 3) = p_phone_last_three
         AND length(regexp_replace(coalesce(phone, ''), '[^0-9]', '', 'g')) >= 3;
 
