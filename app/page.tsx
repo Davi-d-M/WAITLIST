@@ -99,7 +99,7 @@ const defaultSiteContent: SiteContent = {
   age_group_tracks: {},
   genre_tracks: {},
   launch_at: null,
-  tokens_per_referral: 10
+  tokens_per_referral: 3
 };
 
 function getShareLabel(ageGroup: string) {
@@ -723,7 +723,7 @@ export default function Home() {
               <div><b>Keep the countdown on your phone.</b><p>Join the list, then add your personal countdown and referral dashboard to your home screen.</p></div>
               <button className="button button-outline" type="button" onClick={() => setStep(1)}>Join &amp; get my countdown <span>↗</span></button>
             </aside>
-            <p className="inline-note">Join early to see the real souvenirs you can earn. Every friend who joins through your personal link earns {siteContent.tokens_per_referral} tokens toward available rewards.</p>
+            <p className="inline-note">Join early to see the real souvenirs you can earn. Every new signup in your referral chain earns you 3 tokens toward available rewards.</p>
             <div className="benefits">{[siteContent.benefit_one, siteContent.benefit_two, siteContent.benefit_three].map(benefit => <span key={benefit}>✦ {benefit}</span>)}</div>
           </div>
           <div className={`hero-art${siteContent.hero_image_url ? ' has-photo' : ''}`} role="img" aria-label={siteContent.hero_image_url ? siteContent.hero_image_alt : 'Online Bar early access'} style={siteContent.hero_image_url ? { backgroundImage: `url("${siteContent.hero_image_url.replaceAll('"', '%22')}")` } : undefined}><div className="art-orbit orbit-one" /><div className="art-orbit orbit-two" /><div className="glass">✦</div><div className="art-label"><b>01</b><span>THE GOOD<br />STUFF IS NEAR</span></div><div className="art-note">FIRST IN.<br />FIRST POUR.</div></div>
@@ -733,7 +733,7 @@ export default function Home() {
 
       {ageGateComplete && step === 0 && siteRewards.length > 0 && (
         <section className="reward-preview" aria-label="Souvenirs you can earn">
-          <div><p className="eyebrow"><span /> EARLY-ACCESS SOUVENIRS</p><h2>See what your tokens can get you.</h2><p className="muted">Every valid friend who joins with your invite earns {siteContent.tokens_per_referral} tokens. Save up to request an available souvenir; rewards are limited and confirmed by our team.</p></div>
+          <div><p className="eyebrow"><span /> EARLY-ACCESS SOUVENIRS</p><h2>See what your tokens can get you.</h2><p className="muted">Every new signup in your referral chain earns 3 tokens. Save up to request an available souvenir; rewards are limited and confirmed by our team.</p></div>
           <div className="reward-grid">{siteRewards.map(reward => <article className="reward-card" key={reward.id}>{reward.image_url && <img src={reward.image_url} alt="" loading="lazy" />}<b>{reward.name}</b>{reward.description && <p>{reward.description}</p>}<span>{reward.token_cost} TOKENS TO REQUEST</span></article>)}</div>
         </section>
       )}
@@ -820,12 +820,12 @@ export default function Home() {
           </aside>
           {referralCode && <p className="referral">YOUR INVITE CODE <b>{referralCode}</b></p>}
           {rewardPath && <p className="inline-note">Your experience: {rewardPaths.find(path => path.id === rewardPath)?.title}</p>}
-          <p className="success-copy">Your unique link tracks friends who join. Each successful new signup earns you {siteContent.tokens_per_referral} tokens to put toward the souvenirs shown on the site.</p>
-          {referralCode && <div className="member-progress"><span>{memberProgress?.referralsJoined ?? '—'} FRIENDS JOINED</span><b>{memberProgress?.tokensAvailable ?? '—'} TOKENS READY</b></div>}
+          <p className="success-copy">Your unique link tracks your referral chain. Each new signup in your downline earns you 3 tokens to put toward the souvenirs shown on the site.</p>
+          {referralCode && <div className="member-progress"><span>{memberProgress?.referralsJoined ?? '—'} DOWNLINE REFERRALS</span><b>{memberProgress?.tokensAvailable ?? '—'} TOKENS READY</b></div>}
           {referralCode && <aside className="countdown-install-nudge">
             <p className="eyebrow"><span /> TAKE YOUR COUNTDOWN WITH YOU</p>
             <h2>Add your OB countdown to your home screen.</h2>
-            <p>Open your personal dashboard and follow the steps to add it to your phone. Your countdown, joined-friend total and tokens will be one tap away.</p>
+            <p>Open your personal dashboard and follow the steps to add it to your phone. Your countdown, downline referrals and tokens will be one tap away.</p>
             <Link className="button button-primary" href={widgetUrl}>Add my countdown <span>↗</span></Link>
           </aside>}
           <button className="button button-primary" onClick={openShareChooser}>{shareLabel} <span>↗</span></button>

@@ -6,9 +6,10 @@ import { usePwaInstall } from '../pwa-install-provider';
 
 type Reward = { id: string; name: string; description: string; image_url: string | null; token_cost: number };
 type Claim = { id: string; reward_id: string; tokens_spent: number; status: 'pending' | 'approved' | 'rejected'; created_at: string };
-type Progress = { referralCode: string; ageGroup: string | null; referralsJoined: number; tokensEarned: number; tokensAvailable: number; claims: Claim[] };
+type Generation = { generation: number; referralsJoined: number; tokensEarned: number };
+type Progress = { referralCode: string; ageGroup: string | null; referralsJoined: number; directReferralsJoined: number; generationBreakdown: Generation[]; tokensPerJoinedReferral: number; tokensEarned: number; tokensAvailable: number; claims: Claim[] };
 type Content = { launch_at: string | null; tokens_per_referral: number };
-const defaultContent: Content = { launch_at: null, tokens_per_referral: 10 };
+const defaultContent: Content = { launch_at: null, tokens_per_referral: 3 };
 function shareLabel(group: string | null) {
   if (group === '18_20' || group === '21_24') return 'Share the buzz';
   if (group === '25_34') return 'Tell a friend';
@@ -102,9 +103,9 @@ export default function WaitlistWidgetPage() {
   };
 
   const shareMessage = useMemo(() => {
-    const invitation = `Join me on the Online Bar early-access list. I earn ${content.tokens_per_referral} tokens when friends join through my link.`;
+    const invitation = `Join me on the Online Bar early-access list. Every new signup in my referral chain earns me 3 tokens.`;
     return `${invitation} ${shareUrl}`;
-  }, [content.tokens_per_referral, shareUrl]);
+  }, [shareUrl]);
 
   const installDashboard = async () => {
     setError('');
@@ -200,7 +201,7 @@ export default function WaitlistWidgetPage() {
       {!isInstalled && <section className="install-card" aria-label="Add your countdown dashboard to your home screen">
         <p className="eyebrow"><span /> KEEP YOUR COUNTDOWN CLOSE</p>
         <h2>Install your OB dashboard.</h2>
-        <p>This adds a dashboard shortcut you can open for your live countdown, joined friends and tokens.</p>
+        <p>This adds a dashboard shortcut you can open for your live countdown, downline referrals and tokens.</p>
         {installPromptAvailable
           ? <button className="button button-primary" type="button" onClick={() => void installDashboard()}>Install dashboard <span>↗</span></button>
           : <p className="install-instructions">{isIOS
@@ -217,9 +218,19 @@ export default function WaitlistWidgetPage() {
         <p>Your countdown refreshes live while this dashboard is open.</p>
       </section>
       <section className="widget-stats" aria-label="Your referral progress">
-        <article><span>FRIENDS WHO JOINED</span><b>{progress.referralsJoined}</b></article>
+        <article><span>DOWNLINE REFERRALS</span><b>{progress.referralsJoined}</b></article>
         <article><span>TOKENS EARNED</span><b>{progress.tokensEarned}</b></article>
         <article><span>TOKENS AVAILABLE</span><b>{progress.tokensAvailable}</b></article>
+      </section>
+      <section className="widget-claims widget-generations" aria-label="Referral generations">
+        <h2>Your referral chain</h2>
+        <p className="muted">You earn 3 tokens for every new member in your downline, including referrals made by your referrals.</p>
+        <ul>{progress.generationBreakdown.length ? progress.generationBreakdown.map(generation => (
+          <li key={generation.generation}>
+            <b>{generation.generation === 1 ? 'Direct referrals' : `Generation ${generation.generation}`}</b>
+            <span>{generation.referralsJoined} joined · {generation.tokensEarned} tokens</span>
+          </li>
+        )) : <li><b>No referrals yet</b><span>Share your invite link to get started.</span></li>}</ul>
       </section>
       <div className="widget-actions">
         <button className="button button-primary" type="button" onClick={() => void share()}>{shareLabel(progress.ageGroup).toUpperCase()} <span>↗</span></button>
@@ -227,7 +238,7 @@ export default function WaitlistWidgetPage() {
       {notice && <p role="status" className="inline-note">{notice}</p>}
       {error && <p role="alert" className="error">{error}</p>}
       <section className="reward-preview widget-rewards">
-        <div><p className="eyebrow"><span /> SOUVENIRS &amp; REWARDS</p><h2>Invite friends. Earn tokens. Request a reward.</h2><p className="muted">Each new person who joins through your link earns {content.tokens_per_referral} tokens. Requests are subject to prize availability and team confirmation.</p></div>
+        <div><p className="eyebrow"><span /> SOUVENIRS &amp; REWARDS</p><h2>Invite friends. Earn tokens. Request a reward.</h2><p className="muted">Every new signup in your referral chain earns 3 tokens. Requests are subject to prize availability and team confirmation.</p></div>
         {!rewards.length ? <p className="muted">The prize list is being prepared. Check back soon.</p> : <div className="reward-grid">{rewards.map(reward => {
           const pending = progress.claims.some(claim => claim.reward_id === reward.id && claim.status === 'pending');
           return <article className="reward-card" key={reward.id}>
@@ -251,7 +262,7 @@ export default function WaitlistWidgetPage() {
           <button aria-label="Close sharing options" className="share-dialog-close" onClick={() => setShareDialogOpen(false)} type="button">×</button>
           <p className="eyebrow"><span /> PASS THE GOOD TIMES ON</p>
           <h2 id="widget-share-title">{shareLabel(progress.ageGroup)}</h2>
-          <p className="share-dialog-copy">Choose an app. Your personal invite link is included so friends who join can earn you {content.tokens_per_referral} tokens.</p>
+          <p className="share-dialog-copy">Choose an app. Your personal invite link is included. Every new signup in your referral chain earns you 3 tokens.</p>
           <div className="share-platform-grid">
             <a href={`https://wa.me/?text=${encodeURIComponent(shareMessage)}`} rel="noreferrer" target="_blank">WhatsApp</a>
             <button onClick={() => void shareToApp('instagram')} type="button">Instagram</button>

@@ -97,7 +97,7 @@ export async function GET() {
     hero_image_url: data.hero_image_url,
     hero_image_alt: data.hero_image_alt,
     launch_at: data.launch_at,
-    tokens_per_referral: data.tokens_per_referral
+    tokens_per_referral: 3
   };
   const { data: rewards, error: rewardsError } = await database.from('waitlist_site_rewards')
     .select('id,name,description,image_url,token_cost,sort_order')

@@ -53,7 +53,7 @@ export async function GET(request: Request) {
   }
 
   const [credits, claims] = await Promise.all([
-    database.from('waitlist_referral_credits').select('token_amount').eq('referrer_id', member.id),
+    database.from('waitlist_referral_credits').select('token_amount,generation').eq('referrer_id', member.id),
     database.from('waitlist_reward_claims').select(claimFields).eq('referrer_id', member.id).order('created_at', { ascending: false }).limit(50)
   ]);
   if (credits.error || claims.error) {
@@ -61,6 +61,15 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Referral progress is temporarily unavailable. Please try again.' }, { status: 503 });
   }
   const earned = (credits.data || []).reduce((total, credit) => total + credit.token_amount, 0);
+  const generations = new Map<number, { generation: number; referralsJoined: number; tokensEarned: number }>();
+  for (const credit of credits.data || []) {
+    const generation = Number.isInteger(credit.generation) && credit.generation > 0 ? credit.generation : 1;
+    const current = generations.get(generation) || { generation, referralsJoined: 0, tokensEarned: 0 };
+    current.referralsJoined += 1;
+    current.tokensEarned += credit.token_amount;
+    generations.set(generation, current);
+  }
+  const generationBreakdown = [...generations.values()].sort((a, b) => a.generation - b.generation);
   const spent = (claims.data || [])
     .filter(claim => claim.status === 'pending' || claim.status === 'approved')
     .reduce((total, claim) => total + claim.tokens_spent, 0);
@@ -85,6 +94,9 @@ export async function GET(request: Request) {
       preferredContactMethod: member.preferred_contact_method
     },
     referralsJoined: (credits.data || []).length,
+    directReferralsJoined: generations.get(1)?.referralsJoined || 0,
+    generationBreakdown,
+    tokensPerJoinedReferral: 3,
     tokensEarned: earned,
     tokensAvailable: Math.max(0, earned - spent),
     claims: claims.data || []

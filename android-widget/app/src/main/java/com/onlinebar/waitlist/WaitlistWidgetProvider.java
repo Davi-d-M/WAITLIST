@@ -11,6 +11,7 @@ import android.os.SystemClock;
 import android.widget.RemoteViews;
 
 import org.json.JSONObject;
+import org.json.JSONArray;
 
 import java.io.BufferedReader;
 import java.io.InputStream;
@@ -88,6 +89,7 @@ public final class WaitlistWidgetProvider extends AppWidgetProvider {
                     data.put("referrals", member.optInt("referralsJoined", 0));
                     data.put("tokens_earned", member.optInt("tokensEarned", 0));
                     data.put("tokens_available", member.optInt("tokensAvailable", 0));
+                    data.put("generation_breakdown", formatGenerationBreakdown(member.optJSONArray("generationBreakdown")));
                     data.put("reward_path", member.optString("rewardPath", ""));
                 }
                 appContext.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
@@ -222,13 +224,20 @@ public final class WaitlistWidgetProvider extends AppWidgetProvider {
             views.setTextViewText(
                     R.id.widget_progress,
                     (pathLabel.isEmpty() ? "" : pathLabel + "  ·  ")
-                            + data.optInt("referrals") + " friends joined  ·  "
-                            + data.optInt("tokens_available") + " tokens"
+                            + data.optInt("referrals") + " downline referrals  ·  "
+                            + data.optInt("tokens_earned") + " tokens earned  ·  "
+                            + data.optInt("tokens_available") + " available"
             );
+            views.setTextViewText(R.id.widget_generations, data.optString("generation_breakdown", "3 tokens per joined referral"));
+            views.setViewVisibility(R.id.widget_generations, android.view.View.VISIBLE);
         } else if (!pathLabel.isEmpty()) {
             views.setTextViewText(R.id.widget_progress, pathLabel + "  ·  Open your launch tracker");
+            views.setTextViewText(R.id.widget_generations, "");
+            views.setViewVisibility(R.id.widget_generations, android.view.View.GONE);
         } else {
             views.setTextViewText(R.id.widget_progress, "Join in the Online Bar app to connect your referral progress");
+            views.setTextViewText(R.id.widget_generations, "");
+            views.setViewVisibility(R.id.widget_generations, android.view.View.GONE);
         }
 
         Uri tracker = Uri.parse(BuildConfig.WAITLIST_SITE_URL);
@@ -242,5 +251,20 @@ public final class WaitlistWidgetProvider extends AppWidgetProvider {
         views.setOnClickPendingIntent(R.id.widget_root, pendingIntent);
         views.setOnClickPendingIntent(R.id.widget_open, pendingIntent);
         manager.updateAppWidget(widgetId, views);
+    }
+
+    private static String formatGenerationBreakdown(JSONArray generations) {
+        if (generations == null || generations.length() == 0) return "3 tokens per joined referral";
+        StringBuilder summary = new StringBuilder("3 tokens per joined referral · ");
+        for (int index = 0; index < generations.length(); index++) {
+            JSONObject generation = generations.optJSONObject(index);
+            if (generation == null) continue;
+            if (summary.charAt(summary.length() - 1) != ' ') summary.append(" · ");
+            int depth = generation.optInt("generation", index + 1);
+            summary.append(depth == 1 ? "Direct" : "Gen " + depth)
+                    .append(": ")
+                    .append(generation.optInt("referralsJoined", 0));
+        }
+        return summary.toString();
     }
 }

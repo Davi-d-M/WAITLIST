@@ -109,6 +109,10 @@ INSERT INTO public.waitlist_site_content (id)
 VALUES ('default')
 ON CONFLICT (id) DO NOTHING;
 
+UPDATE public.waitlist_site_content
+SET tokens_per_referral = 3
+WHERE id = 'default';
+
 CREATE TABLE IF NOT EXISTS public.waitlist_site_rewards (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL,
@@ -125,14 +129,26 @@ CREATE TABLE IF NOT EXISTS public.waitlist_site_rewards (
 CREATE TABLE IF NOT EXISTS public.waitlist_referral_credits (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     referrer_id UUID NOT NULL REFERENCES public.market_waitlist(id) ON DELETE CASCADE,
-    invitee_id UUID NOT NULL UNIQUE REFERENCES public.market_waitlist(id) ON DELETE CASCADE,
+    invitee_id UUID NOT NULL REFERENCES public.market_waitlist(id) ON DELETE CASCADE,
     token_amount INTEGER NOT NULL CHECK (token_amount > 0),
+    generation INTEGER NOT NULL DEFAULT 1 CHECK (generation > 0),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     CHECK (referrer_id <> invitee_id)
 );
 
+ALTER TABLE public.waitlist_referral_credits
+    ADD COLUMN IF NOT EXISTS generation INTEGER NOT NULL DEFAULT 1;
+
+ALTER TABLE public.waitlist_referral_credits
+    DROP CONSTRAINT IF EXISTS waitlist_referral_credits_invitee_id_key;
+
+CREATE UNIQUE INDEX IF NOT EXISTS waitlist_referral_credits_referrer_invitee_uidx
+    ON public.waitlist_referral_credits (referrer_id, invitee_id);
+
 CREATE INDEX IF NOT EXISTS waitlist_referral_credits_referrer_idx
     ON public.waitlist_referral_credits (referrer_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS waitlist_referral_credits_generation_idx
+    ON public.waitlist_referral_credits (referrer_id, generation, created_at DESC);
 
 CREATE TABLE IF NOT EXISTS public.waitlist_reward_claims (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -164,48 +180,165 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
-DECLARE
-    referrer UUID;
-    token_value INTEGER;
 BEGIN
     IF NEW.referred_by_code IS NULL OR btrim(NEW.referred_by_code) = '' THEN
         RETURN NEW;
     END IF;
 
-    SELECT member.id INTO referrer
-    FROM public.market_waitlist AS member
-    WHERE upper(member.referral_code) = upper(NEW.referred_by_code)
-      AND lower(member.email) <> lower(NEW.email)
-      AND member.id <> NEW.id
-      AND NOT EXISTS (
-          SELECT 1 FROM public.market_waitlist AS prior_signup
-          WHERE prior_signup.id <> NEW.id
-            AND lower(prior_signup.email) = lower(NEW.email)
-      )
-    ORDER BY member.created_at
-    LIMIT 1;
-
-    IF referrer IS NULL THEN
+    IF EXISTS (
+        SELECT 1
+        FROM public.market_waitlist AS prior_signup
+        WHERE prior_signup.id <> NEW.id
+          AND lower(prior_signup.email) = lower(NEW.email)
+    ) THEN
         RETURN NEW;
     END IF;
 
-    SELECT tokens_per_referral INTO token_value
-    FROM public.waitlist_site_content
-    WHERE id = 'default';
+    WITH RECURSIVE ancestry(referrer_id, generation, visited) AS (
+        SELECT direct_referrer.id, 1, ARRAY[NEW.id, direct_referrer.id]::UUID[]
+        FROM (
+            SELECT member.id
+            FROM public.market_waitlist AS member
+            WHERE upper(member.referral_code) = upper(NEW.referred_by_code)
+              AND lower(member.email) <> lower(NEW.email)
+              AND member.id <> NEW.id
+            ORDER BY member.created_at
+            LIMIT 1
+        ) AS direct_referrer
 
-    INSERT INTO public.waitlist_referral_credits (referrer_id, invitee_id, token_amount)
-    VALUES (referrer, NEW.id, COALESCE(token_value, 10))
-    ON CONFLICT (invitee_id) DO NOTHING;
+        UNION ALL
+
+        SELECT parent.id, ancestry.generation + 1, ancestry.visited || parent.id
+        FROM ancestry
+        JOIN public.market_waitlist AS current_referrer
+          ON current_referrer.id = ancestry.referrer_id
+        JOIN LATERAL (
+            SELECT member.id
+            FROM public.market_waitlist AS member
+            WHERE upper(member.referral_code) = upper(current_referrer.referred_by_code)
+              AND lower(member.email) <> lower(NEW.email)
+              AND member.id <> ALL(ancestry.visited)
+            ORDER BY member.created_at
+            LIMIT 1
+        ) AS parent ON true
+        WHERE current_referrer.referred_by_code IS NOT NULL
+          AND btrim(current_referrer.referred_by_code) <> ''
+    )
+    INSERT INTO public.waitlist_referral_credits (referrer_id, invitee_id, token_amount, generation)
+    SELECT ancestry.referrer_id, NEW.id, 3, ancestry.generation
+    FROM ancestry
+    ON CONFLICT (referrer_id, invitee_id) DO NOTHING;
 
     RETURN NEW;
 END;
 $$;
+
+WITH RECURSIVE referral_chain(invitee_id, invitee_email, referrer_id, generation, visited, joined_at) AS (
+    SELECT invitee.id, invitee.email, inviter.id, 1,
+           ARRAY[invitee.id, inviter.id]::UUID[], invitee.created_at
+    FROM public.market_waitlist AS invitee
+    JOIN LATERAL (
+        SELECT member.id
+        FROM public.market_waitlist AS member
+        WHERE upper(member.referral_code) = upper(invitee.referred_by_code)
+          AND lower(member.email) <> lower(invitee.email)
+          AND member.id <> invitee.id
+        ORDER BY member.created_at
+        LIMIT 1
+    ) AS inviter ON true
+    WHERE invitee.referred_by_code IS NOT NULL
+      AND btrim(invitee.referred_by_code) <> ''
+      AND NOT EXISTS (
+          SELECT 1
+          FROM public.market_waitlist AS prior_signup
+          WHERE prior_signup.id <> invitee.id
+            AND lower(prior_signup.email) = lower(invitee.email)
+      )
+
+    UNION ALL
+
+    SELECT referral_chain.invitee_id, referral_chain.invitee_email, parent.id,
+           referral_chain.generation + 1, referral_chain.visited || parent.id,
+           referral_chain.joined_at
+    FROM referral_chain
+    JOIN public.market_waitlist AS current_referrer
+      ON current_referrer.id = referral_chain.referrer_id
+    JOIN LATERAL (
+        SELECT member.id
+        FROM public.market_waitlist AS member
+        WHERE upper(member.referral_code) = upper(current_referrer.referred_by_code)
+          AND lower(member.email) <> lower(referral_chain.invitee_email)
+          AND member.id <> ALL(referral_chain.visited)
+        ORDER BY member.created_at
+        LIMIT 1
+    ) AS parent ON true
+    WHERE current_referrer.referred_by_code IS NOT NULL
+      AND btrim(current_referrer.referred_by_code) <> ''
+)
+INSERT INTO public.waitlist_referral_credits (referrer_id, invitee_id, token_amount, generation, created_at)
+SELECT referral_chain.referrer_id, referral_chain.invitee_id, 3,
+       referral_chain.generation, referral_chain.joined_at
+FROM referral_chain
+ON CONFLICT (referrer_id, invitee_id) DO NOTHING;
 
 DROP TRIGGER IF EXISTS market_waitlist_referral_credit ON public.market_waitlist;
 CREATE TRIGGER market_waitlist_referral_credit
     AFTER INSERT ON public.market_waitlist
     FOR EACH ROW
     EXECUTE FUNCTION public.credit_waitlist_referral();
+
+CREATE OR REPLACE FUNCTION public.link_auth_user_to_waitlist()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $$
+BEGIN
+    IF NEW.email IS NULL OR NEW.email_confirmed_at IS NULL THEN
+        RETURN NEW;
+    END IF;
+
+    IF TG_OP = 'UPDATE'
+       AND lower(btrim(COALESCE(NEW.email, ''))) = lower(btrim(COALESCE(OLD.email, '')))
+       AND NEW.email_confirmed_at IS NOT DISTINCT FROM OLD.email_confirmed_at THEN
+        RETURN NEW;
+    END IF;
+
+    UPDATE public.market_waitlist AS member
+    SET user_id = NEW.id,
+        converted_to_user = NEW.id
+    WHERE lower(btrim(member.email)) = lower(btrim(NEW.email))
+      AND (member.user_id IS NULL OR member.user_id = NEW.id)
+      AND (member.converted_to_user IS NULL OR member.converted_to_user = NEW.id);
+
+    RETURN NEW;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.link_auth_user_to_waitlist() FROM PUBLIC, anon, authenticated, service_role;
+DROP TRIGGER IF EXISTS auth_user_link_waitlist_members ON auth.users;
+CREATE TRIGGER auth_user_link_waitlist_members
+    AFTER INSERT OR UPDATE OF email, email_confirmed_at ON auth.users
+    FOR EACH ROW
+    EXECUTE FUNCTION public.link_auth_user_to_waitlist();
+
+WITH email_matches AS (
+    SELECT member.id AS waitlist_id,
+           auth_member.id AS auth_user_id,
+           row_number() OVER (PARTITION BY member.id ORDER BY auth_member.created_at, auth_member.id) AS match_rank
+    FROM public.market_waitlist AS member
+    JOIN auth.users AS auth_member
+      ON lower(btrim(auth_member.email)) = lower(btrim(member.email))
+    WHERE auth_member.email_confirmed_at IS NOT NULL
+)
+UPDATE public.market_waitlist AS member
+SET user_id = email_matches.auth_user_id,
+    converted_to_user = email_matches.auth_user_id
+FROM email_matches
+WHERE email_matches.match_rank = 1
+  AND member.id = email_matches.waitlist_id
+  AND (member.user_id IS NULL OR member.user_id = email_matches.auth_user_id)
+  AND (member.converted_to_user IS NULL OR member.converted_to_user = email_matches.auth_user_id);
 
 CREATE OR REPLACE FUNCTION public.request_waitlist_reward(p_referral_code TEXT, p_reward_id UUID)
 RETURNS UUID

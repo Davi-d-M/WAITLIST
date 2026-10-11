@@ -56,6 +56,16 @@
         android:textSize="12sp" />
 
     <TextView
+        android:id="@+id/widget_generations"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:maxLines="2"
+        android:textColor="#62736B"
+        android:textSize="10sp"
+        android:visibility="gone" />
+
+    <TextView
         android:id="@+id/widget_open"
         android:layout_width="match_parent"
         android:layout_height="38dp"
