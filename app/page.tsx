@@ -177,6 +177,7 @@ export default function Home() {
   const [restoringMember, setRestoringMember] = useState(true);
   const [savedMemberError, setSavedMemberError] = useState('');
   const [recoveryName, setRecoveryName] = useState('');
+  const [recoveryEmail, setRecoveryEmail] = useState('');
   const [recoveryPhoneLastThree, setRecoveryPhoneLastThree] = useState('');
   const [recoveringMember, setRecoveringMember] = useState(false);
   const [recoveryError, setRecoveryError] = useState('');
@@ -557,7 +558,11 @@ export default function Home() {
       const response = await fetch('/api/member/restore', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fullName: recoveryName, phoneLastThree: recoveryPhoneLastThree })
+        body: JSON.stringify({
+          fullName: recoveryName,
+          email: recoveryEmail,
+          phoneLastThree: recoveryPhoneLastThree
+        })
       });
       const result = await response.json() as RestoreMemberResult;
       if (!response.ok || !result.memberToken || !result.referralCode) {
@@ -673,12 +678,13 @@ export default function Home() {
               <p>Your waitlist page is ready. Your referrals, tokens and rewards are saved to your existing entry.</p>
               <Link className="button button-outline" href={widgetUrl}>Open my waitlist page <span>↗</span></Link>
             </> : <>
-              <p>Find your existing waitlist page without signing up again. Enter the name and phone number you used when signing up. Capitalization, spaces and punctuation in your name do not matter.</p>
+              <p>Find your existing waitlist page without signing up again. Enter the name and email you used when signing up, plus the last three phone digits. If more than one signup matches, we will not guess which one is yours.</p>
               <form className="recovery-form" onSubmit={restoreMember}>
                 <label>Your signup name<input autoComplete="name" maxLength={120} value={recoveryName} onChange={event => setRecoveryName(event.target.value)} required /></label>
+                <label>Your signup email<input type="email" autoComplete="email" maxLength={254} value={recoveryEmail} onChange={event => setRecoveryEmail(event.target.value)} required /></label>
                 <label>Last three phone digits (no spaces)<input autoComplete="off" inputMode="numeric" pattern="[0-9]{3}" maxLength={3} value={recoveryPhoneLastThree} onChange={event => setRecoveryPhoneLastThree(event.target.value.replace(/\D/g, '').slice(0, 3))} required /></label>
                 {recoveryError && <p className="error" role="alert">{recoveryError}</p>}
-                <button className="button button-primary" type="submit" disabled={recoveringMember || recoveryName.trim().length < 2 || recoveryPhoneLastThree.length !== 3}>
+                <button className="button button-primary" type="submit" disabled={recoveringMember || recoveryName.trim().length < 2 || !recoveryEmail.trim() || recoveryPhoneLastThree.length !== 3}>
                   {recoveringMember ? 'Finding your page…' : 'Find my waitlist page'} <span>↗</span>
                 </button>
               </form>

@@ -22,8 +22,11 @@ GRANT ALL ON public.waitlist_member_sessions TO service_role;
 REVOKE ALL ON public.waitlist_member_restore_attempts FROM PUBLIC, anon, authenticated;
 GRANT ALL ON public.waitlist_member_restore_attempts TO service_role;
 
+DROP FUNCTION IF EXISTS public.restore_waitlist_member_session(TEXT, TEXT, TEXT, TEXT);
+
 CREATE OR REPLACE FUNCTION public.restore_waitlist_member_session(
     p_full_name TEXT,
+    p_email TEXT,
     p_phone_last_three TEXT,
     p_session_token_hash TEXT,
     p_request_hash TEXT
@@ -38,7 +41,8 @@ DECLARE
     matched_members INTEGER;
     current_attempts INTEGER;
 BEGIN
-    IF length(trim(p_full_name)) < 2 OR p_phone_last_three !~ '^[0-9]{3}$'
+    IF length(trim(p_full_name)) < 2 OR p_email !~* '^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$'
+        OR p_phone_last_three !~ '^[0-9]{3}$'
         OR p_session_token_hash !~ '^[0-9a-f]{64}$'
         OR p_request_hash !~ '^[0-9a-f]{64}$' THEN
         RETURN jsonb_build_object('member_id', NULL, 'rate_limited', false);
@@ -66,8 +70,15 @@ BEGIN
     SELECT count(*)::INTEGER, (array_agg(id ORDER BY created_at DESC))[1]
     INTO matched_members, recovered_member_id
     FROM public.market_waitlist
-    WHERE regexp_replace(lower(trim(full_name)), '[[:space:][:punct:]]', '', 'g')
-            = regexp_replace(lower(trim(p_full_name)), '[[:space:][:punct:]]', '', 'g')
+    WHERE lower(trim(email)) = lower(trim(p_email))
+        AND (
+            regexp_replace(lower(trim(full_name)), '[[:space:][:punct:]]', '', 'g')
+                = regexp_replace(lower(trim(p_full_name)), '[[:space:][:punct:]]', '', 'g')
+            OR left(
+                regexp_replace(lower(trim(full_name)), '[[:space:][:punct:]]', '', 'g'),
+                length(regexp_replace(lower(trim(p_full_name)), '[[:space:][:punct:]]', '', 'g'))
+            ) = regexp_replace(lower(trim(p_full_name)), '[[:space:][:punct:]]', '', 'g')
+        )
         AND right(regexp_replace(coalesce(phone, ''), '[^0-9]', '', 'g'), 3) = p_phone_last_three
         AND length(regexp_replace(coalesce(phone, ''), '[^0-9]', '', 'g')) >= 3;
 
@@ -92,9 +103,9 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.restore_waitlist_member_session(TEXT, TEXT, TEXT, TEXT)
+REVOKE ALL ON FUNCTION public.restore_waitlist_member_session(TEXT, TEXT, TEXT, TEXT, TEXT)
     FROM PUBLIC, anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.restore_waitlist_member_session(TEXT, TEXT, TEXT, TEXT)
+GRANT EXECUTE ON FUNCTION public.restore_waitlist_member_session(TEXT, TEXT, TEXT, TEXT, TEXT)
     TO service_role;
 
 NOTIFY pgrst, 'reload schema';

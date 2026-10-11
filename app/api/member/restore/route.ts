@@ -23,17 +23,22 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Request origin is not allowed.' }, { status: 403 });
   }
 
-  let body: { fullName?: unknown; phoneLastThree?: unknown };
+  let body: { fullName?: unknown; email?: unknown; phoneLastThree?: unknown };
   try {
     body = await request.json() as typeof body;
   } catch {
-    return NextResponse.json({ error: 'Enter your name and the last three digits of your phone number.' }, { status: 400 });
+    return NextResponse.json({ error: 'Enter your signup name, email and the last three digits of your phone number.' }, { status: 400 });
   }
 
   const fullName = typeof body.fullName === 'string' ? body.fullName.trim().slice(0, 120) : '';
+  const email = typeof body.email === 'string' ? body.email.trim().slice(0, 254).toLowerCase() : '';
   const phoneLastThree = typeof body.phoneLastThree === 'string' ? body.phoneLastThree.trim() : '';
-  if (fullName.length < 2 || !/^\d{3}$/.test(phoneLastThree)) {
-    return NextResponse.json({ error: 'Enter the name you used to join and exactly three phone digits.' }, { status: 400 });
+  if (
+    fullName.length < 2
+    || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+    || !/^\d{3}$/.test(phoneLastThree)
+  ) {
+    return NextResponse.json({ error: 'Enter the name and email you used to join, plus exactly three phone digits.' }, { status: 400 });
   }
 
   const database = createDatabase();
@@ -56,6 +61,7 @@ export async function POST(request: Request) {
   const requestHash = createHmac('sha256', serviceKey).update(clientAddress).digest('hex');
   const { data, error } = await database.rpc('restore_waitlist_member_session', {
     p_full_name: fullName,
+    p_email: email,
     p_phone_last_three: phoneLastThree,
     p_session_token_hash: tokenHash,
     p_request_hash: requestHash
@@ -78,7 +84,7 @@ export async function POST(request: Request) {
 
   if (typeof data?.member_id !== 'string') {
     return NextResponse.json({
-      error: 'We could not find one matching waitlist entry. Enter the name you used when signing up and the last three digits of that same phone number. Capitalization, spaces and punctuation do not matter. If you joined without a phone number or still cannot find your entry, contact support.'
+      error: 'We could not find one matching waitlist entry. Check the name, signup email and last three digits of the same phone number. You can enter your first or full name; capitalization, spaces and punctuation do not matter. If you still cannot find your entry, contact support.'
     }, { status: 404 });
   }
 
