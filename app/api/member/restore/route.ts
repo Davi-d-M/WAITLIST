@@ -52,13 +52,17 @@ export async function POST(request: Request) {
   const database = createDatabase();
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
   if (!database || !serviceKey) {
-    return NextResponse.json({ error: 'Waitlist recovery is temporarily unavailable. Please try again later.' }, { status: 503 });
+    console.error('[WaitlistMember] Recovery is unavailable because the shared database is not configured.');
+    return NextResponse.json({
+      error: 'Waitlist recovery is not connected right now. Please contact support; do not create a second signup.'
+    }, { status: 503 });
   }
 
   const forwardedFor = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
   const clientAddress = request.headers.get('x-real-ip')?.trim()
     || request.headers.get('x-vercel-forwarded-for')?.trim()
-    || forwardedFor;
+    || forwardedFor
+    || (process.env.NODE_ENV !== 'production' ? 'local-development' : null);
   if (!clientAddress) {
     console.error('[WaitlistMember] Recovery was blocked because the hosting platform did not provide a client address for throttling.');
     return NextResponse.json({ error: 'Waitlist recovery could not verify this request. Refresh the page and try again.' }, { status: 503 });

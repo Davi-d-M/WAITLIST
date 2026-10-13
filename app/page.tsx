@@ -85,6 +85,7 @@ type CampaignExperience = { id: RewardPath; title: string; description: string; 
 type CampaignSettings = {
   brandName: string;
   brandDescriptor: string;
+  palette: 'midnight' | 'yellow';
   tagline: string;
   subheadline: string;
   presentedBy: string;
@@ -122,6 +123,7 @@ const defaultSiteContent: SiteContent = {
   campaign_settings: {
     brandName: 'Midnight Society KE',
     brandDescriptor: 'KENYA · A PRIVATE WORLD OF EXPERIENCES',
+    palette: 'midnight',
     tagline: 'Some nights become stories.',
     subheadline: 'Others become legends.',
     presentedBy: 'Presented by ONLINE BAR · Nairobi, Kenya',
@@ -187,6 +189,7 @@ export default function Home() {
   const musicQualifiedRef = useRef(false);
   const [siteContent, setSiteContent] = useState<SiteContent>(defaultSiteContent);
   const [siteContentLoaded, setSiteContentLoaded] = useState(false);
+  const [siteContentLoadError, setSiteContentLoadError] = useState('');
   const [refreshingTracks, setRefreshingTracks] = useState(false);
   const [siteRewards, setSiteRewards] = useState<SiteReward[]>([]);
   const [memberProgress, setMemberProgress] = useState<MemberProgress | null>(null);
@@ -241,10 +244,16 @@ export default function Home() {
       const result = await response.json() as { content?: SiteContent; rewards?: SiteReward[]; error?: string };
       if (!response.ok || !result.content) throw new Error(result.error || 'Published content could not be loaded.');
       setSiteContent({ ...defaultSiteContent, ...result.content });
+      document.documentElement.dataset.palette = result.content.campaign_settings.palette === 'yellow' ? 'yellow' : 'midnight';
       setSiteRewards(result.rewards || []);
+      setSiteContentLoadError('');
     } catch (cause) {
-      console.error('[WaitlistSite] Could not refresh published content:', cause);
-      setMusicNotice('Could not check for new music right now. Please try again.');
+      console.warn('[WaitlistSite] Could not refresh published content:', cause);
+      setSiteContentLoadError(cause instanceof TypeError
+        ? 'We could not connect to the waitlist service. Check your connection and try again.'
+        : cause instanceof Error
+          ? cause.message
+          : 'Campaign details could not be loaded. Please try again.');
     } finally {
       setSiteContentLoaded(true);
       setRefreshingTracks(false);
@@ -353,7 +362,7 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    if (!pageOpenRecordedRef.current) {
+    if (siteContentLoaded && !siteContentLoadError && !pageOpenRecordedRef.current) {
       pageOpenRecordedRef.current = true;
       recordAnalytics('page_open');
     }
@@ -365,7 +374,7 @@ export default function Home() {
       });
     }
     return () => window.clearInterval(timer);
-  }, [recordAnalytics]);
+  }, [recordAnalytics, siteContentLoaded, siteContentLoadError]);
 
   useEffect(() => () => {
     if (musicFadeRef.current !== null) window.clearInterval(musicFadeRef.current);
@@ -626,7 +635,11 @@ export default function Home() {
       setReferralCode(result.referralCode);
       setMemberRecovered(true);
     } catch (cause) {
-      setRecoveryError(cause instanceof Error ? cause.message : 'Your waitlist page could not be restored. Please try again.');
+      setRecoveryError(cause instanceof TypeError
+        ? 'We could not connect to the waitlist service. Check your connection and try again. If it keeps happening, contact support. Your existing signup has not been changed.'
+        : cause instanceof Error
+          ? cause.message
+          : 'Your waitlist page could not be restored. Please try again.');
     } finally {
       setRecoveringMember(false);
     }
@@ -717,7 +730,13 @@ export default function Home() {
           {Object.keys(siteContent.genre_tracks).length === 0 && <p className="inline-note">Pick your age range for now. Genre tracks are coming soon.</p>}
           <label className="check-row age-row"><input type="checkbox" checked={adultConfirmedAtEntry} onChange={event => setAdultConfirmedAtEntry(event.target.checked)} /><span>I confirm I am 18 or older.</span></label>
           <p className="privacy-note">Music starts softly after you continue, then gradually gets louder. You can pause it anytime. We count anonymous site opens and age-group track listens to learn what resonates; activity is not linked to signup details. The area heat map uses only the neighbourhood members choose to share when joining.</p>
-          <button className="button button-primary" disabled={!siteContentLoaded || !ageGroup || !adultConfirmedAtEntry} onClick={enterSite}>{siteContentLoaded ? `Enter ${siteContent.campaign_settings.brandName}` : 'Loading…'} <span>↗</span></button>
+          {siteContentLoadError && <div className="error" role="alert">
+            <p>{siteContentLoadError}</p>
+            <button type="button" disabled={refreshingTracks} onClick={() => { setRefreshingTracks(true); void loadPublishedContent(); }}>
+              {refreshingTracks ? 'Checking connection…' : 'Try again'}
+            </button>
+          </div>}
+          <button className="button button-primary" disabled={!siteContentLoaded || Boolean(siteContentLoadError) || !ageGroup || !adultConfirmedAtEntry} onClick={enterSite}>{siteContentLoadError ? 'Waitlist temporarily unavailable' : siteContentLoaded ? `Enter ${siteContent.campaign_settings.brandName}` : 'Loading…'} {!siteContentLoadError && <span>↗</span>}</button>
           {!restoringMember && savedMemberProfile && <aside className="returning-member-card">
             <p className="eyebrow"><span /> WELCOME BACK{savedMemberProfile.fullName ? `, ${savedMemberProfile.fullName.split(' ')[0].toUpperCase()}` : ''}</p>
             <p>You’re already on the waitlist. Your details have been restored on this device — there’s no need to sign up again.</p>

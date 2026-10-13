@@ -48,6 +48,7 @@ function publishedCampaignSettings(raw: unknown) {
   return {
     brandName: safeString('brandName', 80),
     brandDescriptor: safeString('brandDescriptor', 120),
+    palette: settings.palette === 'yellow' ? 'yellow' : 'midnight',
     tagline: safeString('tagline', 120),
     subheadline: safeString('subheadline', 120),
     presentedBy: safeString('presentedBy', 120),
