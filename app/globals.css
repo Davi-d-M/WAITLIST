@@ -85,7 +85,7 @@ h1 em,.success-card h1 em{font-family:Georgia,"Times New Roman",serif;color:var(
 .countdown-install-nudge h2,.install-card h2{margin:0;font-size:clamp(22px,4vw,32px);letter-spacing:-.05em}
 .countdown-install-nudge .eyebrow,.install-card .eyebrow{margin-bottom:12px}
 .countdown-install-nudge .button{margin-top:16px}
-.halloween-invite{display:flex;align-items:flex-start;gap:15px;margin:0 0 22px;padding:18px 19px;border:1px solid #e8c5a0;border-left:4px solid var(--primary);background:linear-gradient(120deg,#fffaf3 0%,#fff 100%);box-shadow:0 12px 30px #6e35110d}
+.halloween-invite{display:flex;align-items:flex-start;gap:15px;margin:0 0 22px;padding:18px 19px;border:1px solid var(--line);border-left:4px solid var(--primary);background:linear-gradient(120deg,var(--primary-soft) 0%,#fff 100%);box-shadow:0 12px 30px #10231f0b}
 .halloween-invite-icon{display:grid;width:37px;height:37px;flex:none;place-items:center;border-radius:50%;background:var(--primary);color:#fff;font-size:19px}
 .halloween-invite-eyebrow{margin:0 0 5px;color:var(--primary);font-size:8px;font-weight:900;letter-spacing:.17em}
 .halloween-invite h2{margin:0;color:var(--ink);font-size:clamp(19px,2.4vw,25px);letter-spacing:-.045em}
