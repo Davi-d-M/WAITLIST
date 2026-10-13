@@ -234,6 +234,7 @@ export default function WaitlistWidgetPage() {
       </section>
       <div className="widget-actions">
         <button className="button button-primary" type="button" onClick={() => void share()}>{shareLabel(progress.ageGroup).toUpperCase()} <span>↗</span></button>
+        <Link className="button button-outline" href="/fit-studio">Plan my Halloween look <span>↗</span></Link>
       </div>
       {notice && <p role="status" className="inline-note">{notice}</p>}
       {error && <p role="alert" className="error">{error}</p>}

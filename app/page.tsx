@@ -78,6 +78,7 @@ type SiteContent = {
   campaign_settings: CampaignSettings;
   launch_at: string | null;
   tokens_per_referral: number;
+  fit_studio_settings: { title: string; intro: string; merchant_notice: string };
 };
 type CampaignPhase = 'signal' | 'anticipation' | 'invitation' | 'final_call' | 'aftermath';
 type CampaignExperience = { id: RewardPath; title: string; description: string; icon: string; active: boolean };
@@ -140,7 +141,12 @@ const defaultSiteContent: SiteContent = {
     ]
   },
   launch_at: null,
-  tokens_per_referral: 3
+  tokens_per_referral: 3,
+  fit_studio_settings: {
+    title: 'Midnight Fit Studio',
+    intro: 'Tell us what you are planning and what help would make your Halloween look come together. This step is optional.',
+    merchant_notice: 'We are listening to what you want and working with merchants to source the styles and services members ask for. Provider availability and prices must be confirmed; no match is guaranteed.'
+  }
 };
 
 function getShareLabel(ageGroup: string) {
@@ -215,6 +221,7 @@ export default function Home() {
   const [memberAccessToken, setMemberAccessToken] = useState('');
   const [gpsStatus, setGpsStatus] = useState('');
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [fitStudioPromptDismissed, setFitStudioPromptDismissed] = useState(false);
   const [shareLink, setShareLink] = useState('');
   const [shareMessage, setShareMessage] = useState('');
   const [savedMemberProfile, setSavedMemberProfile] = useState<SavedMemberProfile | null>(null);
@@ -892,6 +899,18 @@ export default function Home() {
           {referralCode && <p className="referral">YOUR INVITE CODE <b>{referralCode}</b></p>}
           {rewardPath && <p className="inline-note">Your experience: {siteContent.campaign_settings.experiences.find(path => path.id === rewardPath)?.title}</p>}
           <p className="success-copy">Your unique link tracks your referral chain. Each new signup in your downline earns you 3 tokens to put toward the souvenirs shown on the site.</p>
+          {!fitStudioPromptDismissed && <aside className="halloween-invite fit-studio-prompt" aria-label="Optional Halloween outfit planning">
+            <span className="halloween-invite-icon" aria-hidden="true">✦</span>
+            <div>
+              <p className="halloween-invite-eyebrow">OPTIONAL · MIDNIGHT FIT STUDIO</p>
+              <h2>{siteContent.fit_studio_settings.title}</h2>
+              <p>{siteContent.fit_studio_settings.intro} {siteContent.fit_studio_settings.merchant_notice}</p>
+              <div className="fit-studio-actions">
+                <Link className="button button-primary" href="/fit-studio">Build my Halloween look <span>↗</span></Link>
+                <button className="button button-ghost" type="button" onClick={() => setFitStudioPromptDismissed(true)}>I’ll do this later</button>
+              </div>
+            </div>
+          </aside>}
           {referralCode && <div className="member-progress"><span>{memberProgress?.referralsJoined ?? '—'} DOWNLINE REFERRALS</span><b>{memberProgress?.tokensAvailable ?? '—'} TOKENS READY</b></div>}
           {referralCode && <aside className="countdown-install-nudge">
             <p className="eyebrow"><span /> TAKE YOUR COUNTDOWN WITH YOU</p>

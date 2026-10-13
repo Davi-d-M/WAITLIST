@@ -118,6 +118,24 @@ export async function GET() {
       error: 'Waitlist content is not initialized. Run supabase/WAITLIST_SITE_MIGRATION.sql in the Supabase project used by this site.'
     }, { status: 503 });
   }
+  const { data: fitSettingsRow, error: fitSettingsError } = await database.from('fit_studio_settings')
+    .select('title,intro,merchant_notice')
+    .eq('id', 'default')
+    .maybeSingle();
+  if (fitSettingsError && !['42P01', 'PGRST205'].includes(fitSettingsError.code || '')) {
+    console.error('[WaitlistSite] Could not load public Fit Studio copy:', fitSettingsError.code);
+    return NextResponse.json({ error: 'Fit Studio content could not be loaded. Check the shared site-content database.' }, { status: 503 });
+  }
+  if (fitSettingsError) {
+    console.warn('[WaitlistSite] Fit Studio settings are not installed yet; run WAITLIST_FIT_STUDIO_MIGRATION.sql.');
+  }
+  const fitStudioSettings = {
+    title: typeof fitSettingsRow?.title === 'string' ? fitSettingsRow.title.slice(0, 100) : 'Midnight Fit Studio',
+    intro: typeof fitSettingsRow?.intro === 'string' ? fitSettingsRow.intro.slice(0, 500)
+      : 'Tell us what you are planning and what help would make your Halloween look come together. This step is optional.',
+    merchant_notice: typeof fitSettingsRow?.merchant_notice === 'string' ? fitSettingsRow.merchant_notice.slice(0, 500)
+      : 'We are listening to what you want and working with merchants to source the styles and services members ask for. Provider availability and prices must be confirmed; no match is guaranteed.'
+  };
   const allowedAgeGroups = new Set(['18_20', '21_24', '25_34', '35_44', '45_plus']);
   const rawTracks = data.age_group_tracks && typeof data.age_group_tracks === 'object'
     ? data.age_group_tracks as Record<string, { title?: unknown; url?: unknown }>
@@ -162,6 +180,7 @@ export async function GET() {
     hero_image_url: data.hero_image_url,
     hero_image_alt: data.hero_image_alt,
     campaign_settings: publishedCampaignSettings(data.campaign_settings),
+    fit_studio_settings: fitStudioSettings,
     launch_at: data.launch_at,
     tokens_per_referral: 3
   };
