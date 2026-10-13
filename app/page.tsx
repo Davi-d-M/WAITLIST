@@ -75,8 +75,28 @@ type SiteContent = {
   hero_image_alt: string;
   age_group_tracks: Record<string, { title: string; url: string }>;
   genre_tracks: Record<string, { title: string; url: string }>;
+  campaign_settings: CampaignSettings;
   launch_at: string | null;
   tokens_per_referral: number;
+};
+type CampaignPhase = 'signal' | 'anticipation' | 'invitation' | 'final_call' | 'aftermath';
+type CampaignExperience = { id: RewardPath; title: string; description: string; icon: string; active: boolean };
+type CampaignSettings = {
+  brandName: string;
+  brandDescriptor: string;
+  tagline: string;
+  subheadline: string;
+  presentedBy: string;
+  instagramHandle: string;
+  ctaLabel: string;
+  phase: CampaignPhase;
+  announcement: string;
+  eventTitle: string;
+  eventDetails: string;
+  venueNotice: string;
+  registrationUrl: string;
+  registrationLabel: string;
+  experiences: CampaignExperience[];
 };
 type SiteReward = { id: string; name: string; description: string; image_url: string | null; token_cost: number; sort_order: number };
 type MemberProgress = { referralsJoined: number; tokensEarned: number; tokensAvailable: number; error?: string };
@@ -88,16 +108,37 @@ const ageGroups = [
   { id: '45_plus', label: '45+' }
 ];
 const defaultSiteContent: SiteContent = {
-  eyebrow: 'A BETTER NIGHT STARTS HERE',
-  headline: 'Something good is coming.',
-  intro: 'Your next drink night is about to get a lot easier. Online Bar is bringing your favorites to your door, starting in selected areas.',
-  benefit_one: 'Priority access',
-  benefit_two: 'Launch surprises',
-  benefit_three: 'Area-first delivery',
+  eyebrow: 'MIDNIGHT SOCIETY · KENYA',
+  headline: 'YOUR INVITATION STARTS HERE',
+  intro: 'The launch. The music. The people. The moments you had to be there for.',
+  benefit_one: 'A first look at what’s coming',
+  benefit_two: 'Choose the experiences you love',
+  benefit_three: 'Get the invitation when it drops',
   hero_image_url: null,
-  hero_image_alt: 'Online Bar early access',
+  hero_image_alt: 'Midnight Society Kenya — a private world of experiences',
   age_group_tracks: {},
   genre_tracks: {},
+  campaign_settings: {
+    brandName: 'Midnight Society KE',
+    brandDescriptor: 'KENYA · A PRIVATE WORLD OF EXPERIENCES',
+    tagline: 'Some nights become stories.',
+    subheadline: 'Others become legends.',
+    presentedBy: 'Presented by ONLINE BAR · Nairobi, Kenya',
+    instagramHandle: '@midnight.society.ke',
+    ctaLabel: 'Claim your place',
+    phase: 'signal',
+    announcement: 'Nairobi, you’re on notice. Some nights you hear about the next morning. Some nights you wish you’d known about sooner. And some nights? You had to be there. The first chapter is coming. The details will be revealed as they’re confirmed. When the invitation drops, will you be on the list?',
+    eventTitle: 'The first chapter is coming.',
+    eventDetails: 'Music, experiences, unexpected moments and nights worth remembering. Join the list for confirmed updates.',
+    venueNotice: 'Event details will be shared when they’re confirmed.',
+    registrationUrl: '',
+    registrationLabel: 'View confirmed event details',
+    experiences: [
+      { id: 'wine', title: 'Wine & good living', description: 'Curated wine experiences and good company.', icon: '◈', active: true },
+      { id: 'adventure', title: 'Unexpected experiences', description: 'New places, new stories and shared moments.', icon: '✦', active: true },
+      { id: 'music', title: 'Music & nights out', description: 'Live music and future Soul Fest updates.', icon: '♫', active: true }
+    ]
+  },
   launch_at: null,
   tokens_per_referral: 3
 };
@@ -108,11 +149,14 @@ function getShareLabel(ageGroup: string) {
   return 'Whisper to a friend';
 }
 
-const rewardPaths: Array<{ id: RewardPath; title: string; description: string; icon: string }> = [
-  { id: 'wine', title: 'Wine & good living', description: 'Wine tastings, special invitations and curated gifts.', icon: '🍷' },
-  { id: 'adventure', title: 'Adventure & experiences', description: 'A hosted adventure and a complimentary gift for you and a friend.', icon: '🌍' },
-  { id: 'music', title: 'Music & madness', description: 'A chance to win Soul Fest tickets and special access.', icon: '🎟️' }
-];
+const experienceIds: RewardPath[] = ['wine', 'adventure', 'music'];
+const campaignPhases: Record<CampaignPhase, string> = {
+  signal: 'THE SIGNAL',
+  anticipation: 'THE ANTICIPATION',
+  invitation: 'THE INVITATION',
+  final_call: 'THE FINAL CALL',
+  aftermath: 'THE AFTERMATH'
+};
 
 function countdownParts(launchAt: string | null, now: number) {
   if (!launchAt) return null;
@@ -264,7 +308,7 @@ export default function Home() {
         });
         setPreferredContactMethod(profile.preferredContactMethod || '');
         if (result.ageGroup && ageGroups.some(group => group.id === result.ageGroup)) setAgeGroup(result.ageGroup);
-        if (result.rewardPath && rewardPaths.some(path => path.id === result.rewardPath)) setRewardPath(result.rewardPath);
+        if (result.rewardPath && experienceIds.includes(result.rewardPath)) setRewardPath(result.rewardPath);
         setReferralCode(result.referralCode);
         setMemberAccessToken(accessToken);
       })
@@ -354,6 +398,7 @@ export default function Home() {
   const currentTrack = musicGenre
     ? siteContent.genre_tracks[musicGenre]
     : ageGroup ? siteContent.age_group_tracks[ageGroup] : undefined;
+  const activeExperiences = siteContent.campaign_settings.experiences.filter(experience => experience.active);
 
   const startMusic = (audio: HTMLAudioElement, trackUrl?: string, trackTitle?: string, selectedGenre = musicGenre) => {
     if (musicFadeRef.current !== null) window.clearInterval(musicFadeRef.current);
@@ -491,7 +536,7 @@ export default function Home() {
       setError('Choose your adult age range to join the list.');
       return;
     }
-    if (!rewardPath) {
+    if (!rewardPath || !activeExperiences.some(experience => experience.id === rewardPath)) {
       setError('Choose the experience you are most excited about.');
       return;
     }
@@ -607,10 +652,10 @@ export default function Home() {
   const openShareChooser = () => {
     const url = new URL(`/invite/${encodeURIComponent(referralCode)}`, window.location.origin);
     const text = ageGroup === '18_20' || ageGroup === '21_24'
-      ? `Share the buzz: join me on the Online Bar early-access list. My invite: ${url.toString()}`
+      ? `Share the buzz: join me on the Midnight Society KE list. My invite: ${url.toString()}`
       : ageGroup === '45_plus'
-        ? `A little whisper for you: join me on the Online Bar early-access list. My invite: ${url.toString()}`
-        : `Tell a friend to join the Online Bar early-access waitlist. My invite: ${url.toString()}`;
+        ? `A little whisper for you: join me on the Midnight Society KE list. My invite: ${url.toString()}`
+        : `Tell a friend to join the Midnight Society KE list, powered by ONLINE BAR. My invite: ${url.toString()}`;
     setShareLink(url.toString());
     setShareMessage(text);
     setGpsStatus('');
@@ -642,7 +687,7 @@ export default function Home() {
 
   return (
     <main className="site-shell">
-      <nav className="topbar"><Link className="brand" href="/" aria-label="Online Bar home"><span className="brand-mark">OB</span><span>ONLINE BAR<span className="brand-sub">GOOD TIMES, DELIVERED</span></span></Link><span className="top-status"><i /> EARLY ACCESS</span></nav>
+      <nav className="topbar"><Link className="brand" href="/" aria-label={`${siteContent.campaign_settings.brandName} home`}><span className="brand-mark">✦</span><span>{siteContent.campaign_settings.brandName}<span className="brand-sub">{siteContent.campaign_settings.brandDescriptor}</span></span></Link><span className="top-status"><i /> {campaignPhases[siteContent.campaign_settings.phase]}</span></nav>
       <audio ref={audioRef} loop preload="none" onTimeUpdate={event => {
         const audio = event.currentTarget;
         if (!musicQualifiedRef.current && currentTrack && audio.duration > 0 && audio.currentTime / audio.duration >= 0.8) {
@@ -656,7 +701,7 @@ export default function Home() {
       }} />
       {!ageGateComplete && (
         <section className="age-gate">
-          <p className="eyebrow"><span /> ONLINE BAR EARLY ACCESS</p>
+          <p className="eyebrow"><span /> {siteContent.campaign_settings.brandName} · KENYA</p>
           <h1>First, are you <em>18+?</em></h1>
           <p>This experience is for adults of legal drinking age. Choose an age range and the music you love; we do not ask for your date of birth. Your range is only saved if you join the waitlist.</p>
           <label className="age-gate-select">Your age range<select value={ageGroup} onChange={event => setAgeGroup(event.target.value)}><option value="">Choose an adult age range</option>{ageGroups.map(group => <option key={group.id} value={group.id}>{group.label}</option>)}</select></label>
@@ -665,7 +710,7 @@ export default function Home() {
           {Object.keys(siteContent.genre_tracks).length === 0 && <p className="inline-note">Pick your age range for now. Genre tracks are coming soon.</p>}
           <label className="check-row age-row"><input type="checkbox" checked={adultConfirmedAtEntry} onChange={event => setAdultConfirmedAtEntry(event.target.checked)} /><span>I confirm I am 18 or older.</span></label>
           <p className="privacy-note">Music starts softly after you continue, then gradually gets louder. You can pause it anytime. We count anonymous site opens and age-group track listens to learn what resonates; activity is not linked to signup details. The area heat map uses only the neighbourhood members choose to share when joining.</p>
-          <button className="button button-primary" disabled={!siteContentLoaded || !ageGroup || !adultConfirmedAtEntry} onClick={enterSite}>{siteContentLoaded ? 'Enter & play' : 'Loading…'} <span>↗</span></button>
+          <button className="button button-primary" disabled={!siteContentLoaded || !ageGroup || !adultConfirmedAtEntry} onClick={enterSite}>{siteContentLoaded ? `Enter ${siteContent.campaign_settings.brandName}` : 'Loading…'} <span>↗</span></button>
           {!restoringMember && savedMemberProfile && <aside className="returning-member-card">
             <p className="eyebrow"><span /> WELCOME BACK{savedMemberProfile.fullName ? `, ${savedMemberProfile.fullName.split(' ')[0].toUpperCase()}` : ''}</p>
             <p>You’re already on the waitlist. Your details have been restored on this device — there’s no need to sign up again.</p>
@@ -713,16 +758,19 @@ export default function Home() {
           <div className="hero-copy">
             <p className="eyebrow"><span /> {siteContent.eyebrow}</p>
             <h1>{siteContent.headline}</h1>
+            <p className="hero-tagline"><em>{siteContent.campaign_settings.tagline}</em><span>{siteContent.campaign_settings.subheadline}</span></p>
             <p className="hero-intro">{siteContent.intro}</p>
-            <aside className="halloween-invite" aria-label="Halloween party invitation opportunity">
+            <aside className="halloween-invite" aria-label={`${siteContent.campaign_settings.brandName} announcement`}>
               <span className="halloween-invite-icon" aria-hidden="true">✦</span>
               <div>
-                <p className="halloween-invite-eyebrow">A LITTLE HALLOWEEN MAGIC</p>
-                <h2>A night to remember.</h2>
-                <p>Join the early-access list for a chance to receive a special invitation to our Halloween-themed party. The location and event details will be shared with invited guests in due time.</p>
+                <p className="halloween-invite-eyebrow">{campaignPhases[siteContent.campaign_settings.phase]}</p>
+                <h2>{siteContent.campaign_settings.eventTitle}</h2>
+                <p>{siteContent.campaign_settings.announcement}</p>
+                <p>{siteContent.campaign_settings.eventDetails} {siteContent.campaign_settings.venueNotice}</p>
+                {siteContent.campaign_settings.registrationUrl && <a className="button button-outline event-registration-link" href={siteContent.campaign_settings.registrationUrl} target="_blank" rel="noreferrer">{siteContent.campaign_settings.registrationLabel} <span>↗</span></a>}
               </div>
             </aside>
-            <button className="button button-primary" onClick={() => setStep(1)}>Get early access <span>↗</span></button>
+            <button className="button button-primary" onClick={() => setStep(1)}>{siteContent.campaign_settings.ctaLabel} <span>↗</span></button>
             {countdown && <div className="countdown-strip"><b>{countdown.launched ? 'WE ARE LIVE' : 'LAUNCH COUNTDOWN'}</b><span>{countdown.launched ? 'The wait is over.' : `${countdown.days}d ${countdown.hours}h ${countdown.minutes}m ${countdown.seconds}s`}</span></div>}
             <aside className="countdown-nudge">
               <span className="countdown-nudge-icon" aria-hidden="true">⌂</span>
@@ -732,8 +780,8 @@ export default function Home() {
             <p className="inline-note">Join early to see the real souvenirs you can earn. Every new signup in your referral chain earns you 3 tokens toward available rewards.</p>
             <div className="benefits">{[siteContent.benefit_one, siteContent.benefit_two, siteContent.benefit_three].map(benefit => <span key={benefit}>✦ {benefit}</span>)}</div>
           </div>
-          <div className={`hero-art${siteContent.hero_image_url ? ' has-photo' : ''}`} role="img" aria-label={siteContent.hero_image_url ? siteContent.hero_image_alt : 'Online Bar early access'} style={siteContent.hero_image_url ? { backgroundImage: `url("${siteContent.hero_image_url.replaceAll('"', '%22')}")` } : undefined}><div className="art-orbit orbit-one" /><div className="art-orbit orbit-two" /><div className="glass">✦</div><div className="art-label"><b>01</b><span>THE GOOD<br />STUFF IS NEAR</span></div><div className="art-note">FIRST IN.<br />FIRST POUR.</div></div>
-          <footer className="hero-footer"><span>NAIROBI · KENYA</span><span>18+ · RESPONSIBLE ENJOYMENT</span><span>YOUR NEIGHBOURHOOD, NEXT</span></footer>
+          <div className={`hero-art${siteContent.hero_image_url ? ' has-photo' : ''}`} role="img" aria-label={siteContent.hero_image_url ? siteContent.hero_image_alt : siteContent.campaign_settings.brandName} style={siteContent.hero_image_url ? { backgroundImage: `url("${siteContent.hero_image_url.replaceAll('"', '%22')}")` } : undefined}><div className="art-orbit orbit-one" /><div className="art-orbit orbit-two" /><div className="glass">✦</div><div className="art-label"><b>MS</b><span>KENYA<br />AFTER DARK</span></div><div className="art-note">SOME NIGHTS<br />BECOME STORIES</div></div>
+          <footer className="hero-footer"><span>{siteContent.campaign_settings.presentedBy}</span><span>18+ · RESPONSIBLE ENJOYMENT</span><a href={`https://www.instagram.com/${siteContent.campaign_settings.instagramHandle.replace(/^@/, '')}/`} target="_blank" rel="noreferrer">{siteContent.campaign_settings.instagramHandle}</a></footer>
         </section>
       )}
 
@@ -741,6 +789,22 @@ export default function Home() {
         <section className="reward-preview" aria-label="Souvenirs you can earn">
           <div><p className="eyebrow"><span /> EARLY-ACCESS SOUVENIRS</p><h2>See what your tokens can get you.</h2><p className="muted">Every new signup in your referral chain earns 3 tokens. Save up to request an available souvenir; rewards are limited and confirmed by our team.</p></div>
           <div className="reward-grid">{siteRewards.map(reward => <article className="reward-card" key={reward.id}>{reward.image_url && <img src={reward.image_url} alt="" loading="lazy" />}<b>{reward.name}</b>{reward.description && <p>{reward.description}</p>}<span>{reward.token_cost} TOKENS TO REQUEST</span></article>)}</div>
+        </section>
+      )}
+
+      {ageGateComplete && step === 0 && (
+        <section className="experience-preview" aria-label="Midnight Society experiences">
+          <p className="eyebrow"><span /> CHOOSE YOUR CHAPTER</p>
+          <div className="experience-preview-grid">
+            {activeExperiences.map(experience => (
+              <article className="experience-preview-card" key={experience.id}>
+                <span aria-hidden="true">{experience.icon}</span>
+                <h2>{experience.title}</h2>
+                <p>{experience.description}</p>
+                <small>Choose this interest when you join</small>
+              </article>
+            ))}
+          </div>
         </section>
       )}
 
@@ -775,7 +839,7 @@ export default function Home() {
               <fieldset className="reward-path-fieldset">
                 <legend>What are you here for? <span className="optional">CHOOSE YOUR EXPERIENCE</span></legend>
                 <div className="reward-path-grid">
-                  {rewardPaths.map(path => (
+                  {activeExperiences.map(path => (
                     <button
                       aria-pressed={rewardPath === path.id}
                       className={`reward-path-option${rewardPath === path.id ? ' selected' : ''}`}
@@ -800,7 +864,7 @@ export default function Home() {
               <label className="trap" aria-hidden="true">Website<input tabIndex={-1} autoComplete="off" value={website} onChange={event => setWebsite(event.target.value)} /></label>
               {savedMemberProfile && <p className="inline-note">Your saved details are filled in. You’re already registered, so use your dashboard instead of joining again unless you need to update this area.</p>}
               <p className="privacy-note">We’ll only use the contact channels you selected for early-access updates. You can opt out later.</p>
-              <div className="button-row"><button type="button" className="button button-ghost" onClick={() => { setError(''); setStep(1); }}>← Back</button><button className="button button-primary" disabled={busy}>{busy ? 'Joining…' : 'Join early access'} <span>↗</span></button></div>
+              <div className="button-row"><button type="button" className="button button-ghost" onClick={() => { setError(''); setStep(1); }}>← Back</button><button className="button button-primary" disabled={busy}>{busy ? 'Joining…' : siteContent.campaign_settings.ctaLabel} <span>↗</span></button></div>
               {error && <p className="error" role="alert">{error}</p>}
             </form>
           )}
@@ -815,22 +879,23 @@ export default function Home() {
             : serviceAreaStatus === 'outside_area'
               ? `We’re not serving ${resolvedArea}, ${resolvedCity} just yet, but we’re coming soon. We’ve recorded your area${landmark.trim() ? ` near ${landmark.trim()}` : ''} to help us plan where to expand next, and we’ll keep you posted.`
               : `We’ve recorded demand for ${resolvedArea}, ${resolvedCity}${landmark.trim() ? ` near ${landmark.trim()}` : ''}. We’re still confirming launch coverage, and we’ll share an update as soon as we know more.`}</p>
-          <p className="success-copy">You’re now on the Online Bar early-access list. Keep an eye on the contact channel(s) you selected for your update.</p>
-          <aside className="halloween-invite halloween-invite-success" aria-label="Halloween party invitation opportunity">
+          <p className="success-copy">You’re now on the {siteContent.campaign_settings.brandName} list, powered by ONLINE BAR. Keep an eye on the contact channel(s) you selected for your update.</p>
+          <aside className="halloween-invite halloween-invite-success" aria-label={`${siteContent.campaign_settings.brandName} update`}>
             <span className="halloween-invite-icon" aria-hidden="true">✦</span>
             <div>
-              <p className="halloween-invite-eyebrow">YOUR NEXT NIGHT OUT?</p>
-              <h2>You could be invited.</h2>
-              <p>You’re in the running for a special invitation to our Halloween-themed party. We’ll share the location and event details with invited guests in due time.</p>
+              <p className="halloween-invite-eyebrow">{campaignPhases[siteContent.campaign_settings.phase]}</p>
+              <h2>{siteContent.campaign_settings.eventTitle}</h2>
+              <p>{siteContent.campaign_settings.eventDetails} {siteContent.campaign_settings.venueNotice}</p>
+              {siteContent.campaign_settings.registrationUrl && <a className="button button-outline event-registration-link" href={siteContent.campaign_settings.registrationUrl} target="_blank" rel="noreferrer">{siteContent.campaign_settings.registrationLabel} <span>↗</span></a>}
             </div>
           </aside>
           {referralCode && <p className="referral">YOUR INVITE CODE <b>{referralCode}</b></p>}
-          {rewardPath && <p className="inline-note">Your experience: {rewardPaths.find(path => path.id === rewardPath)?.title}</p>}
+          {rewardPath && <p className="inline-note">Your experience: {siteContent.campaign_settings.experiences.find(path => path.id === rewardPath)?.title}</p>}
           <p className="success-copy">Your unique link tracks your referral chain. Each new signup in your downline earns you 3 tokens to put toward the souvenirs shown on the site.</p>
           {referralCode && <div className="member-progress"><span>{memberProgress?.referralsJoined ?? '—'} DOWNLINE REFERRALS</span><b>{memberProgress?.tokensAvailable ?? '—'} TOKENS READY</b></div>}
           {referralCode && <aside className="countdown-install-nudge">
             <p className="eyebrow"><span /> TAKE YOUR COUNTDOWN WITH YOU</p>
-            <h2>Add your OB countdown to your home screen.</h2>
+            <h2>Add your Midnight Society pass to your home screen.</h2>
             <p>Open your personal dashboard and follow the steps to add it to your phone. Your countdown, downline referrals and tokens will be one tap away.</p>
             <Link className="button button-primary" href={widgetUrl}>Add my countdown <span>↗</span></Link>
           </aside>}
@@ -855,7 +920,7 @@ export default function Home() {
               ref={shareDialogCloseRef}
               type="button"
             >×</button>
-            <p className="eyebrow"><span /> PASS THE GOOD TIMES ON</p>
+            <p className="eyebrow"><span /> PASS THE INVITATION ON</p>
             <h2 id="share-dialog-title">{shareLabel}</h2>
             <p className="share-dialog-copy">Choose where to send your personal invite. Your referral link stays attached.</p>
             <div className="share-platform-grid">
@@ -865,14 +930,14 @@ export default function Home() {
               <button onClick={() => void shareToApp('snapchat')} type="button">Snapchat</button>
               <a href={`https://t.me/share/url?url=${encodeURIComponent(shareLink)}&text=${encodeURIComponent(shareLabel)}`} rel="noreferrer" target="_blank">Telegram</a>
               <a href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareLink)}`} rel="noreferrer" target="_blank">Facebook</a>
-              <a href={`mailto:?subject=${encodeURIComponent('Join me on Online Bar early access')}&body=${encodeURIComponent(shareMessage)}`}>Email</a>
+              <a href={`mailto:?subject=${encodeURIComponent('Join me at Midnight Society KE')}&body=${encodeURIComponent(shareMessage)}`}>Email</a>
               <a href={`sms:?body=${encodeURIComponent(shareMessage)}`}>Text message</a>
               {typeof navigator !== 'undefined' && navigator.share && (
                 <button
                   className="share-platform-more"
                   onClick={async () => {
                     try {
-                      await navigator.share({ title: 'Online Bar early access', text: shareMessage, url: shareLink });
+                      await navigator.share({ title: 'Midnight Society KE', text: shareMessage, url: shareLink });
                     } catch (cause) {
                       if (cause instanceof Error && cause.name !== 'AbortError') {
                         console.error('[WaitlistSite] Could not open the device share sheet:', cause);
@@ -891,10 +956,10 @@ export default function Home() {
         </div>
       )}
       <aside className="support-cta">
-        <div><p className="eyebrow"><span /> NEED A HAND?</p><p>Questions about early access? Message our support team on WhatsApp.</p></div>
-        <a href="https://wa.me/254769345599?text=Hi%20Online%20Bar%2C%20I%20need%20support%20with%20the%20early-access%20waitlist." rel="noreferrer" target="_blank">WhatsApp support · 07 69345599 <span aria-hidden="true">↗</span></a>
+        <div><p className="eyebrow"><span /> NEED A HAND?</p><p>Questions about Midnight Society? Message the ONLINE BAR support team on WhatsApp.</p></div>
+        <a href="https://wa.me/254769345599?text=Hi%20Online%20Bar%2C%20I%20need%20support%20with%20Midnight%20Society." rel="noreferrer" target="_blank">WhatsApp support · 07 69345599 <span aria-hidden="true">↗</span></a>
       </aside>
-      <footer className="site-footer"><span>ONLINE BAR</span><span>GOOD TIMES, DELIVERED.</span><a href="https://onlinebar.co.ke/privacy">PRIVACY</a></footer>
+      <footer className="site-footer"><span>{siteContent.campaign_settings.brandName}</span><span>POWERED BY ONLINE BAR</span><a href="https://onlinebar.co.ke/privacy">PRIVACY</a></footer>
     </main>
   );
 }

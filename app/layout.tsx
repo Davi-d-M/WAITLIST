@@ -3,14 +3,21 @@ import './globals.css';
 import { PwaInstallProvider } from './pwa-install-provider';
 
 export const metadata: Metadata = {
-  title: 'Online Bar | Early Access',
-  description: 'Join the Online Bar early-access list, invite friends, earn tokens and see what you can redeem.',
-  applicationName: 'OB',
+  title: 'Midnight Society KE | Your invitation starts here',
+  description: 'Some nights become stories. Join Midnight Society KE for confirmed launch, music and experience updates. Presented by ONLINE BAR.',
+  applicationName: 'Midnight Society KE',
+  openGraph: {
+    title: 'Midnight Society KE',
+    description: 'Some nights become stories. Others become legends.',
+    siteName: 'Midnight Society KE',
+    locale: 'en_KE',
+    type: 'website'
+  },
   manifest: '/manifest.webmanifest',
   icons: {
     icon: [
+      { url: '/icon.svg', type: 'image/svg+xml' },
       { url: '/icon-192.png', sizes: '192x192', type: 'image/png' },
-      { url: '/icon.svg', type: 'image/svg+xml' }
     ],
     shortcut: '/icon-192.png',
     apple: '/icon-192.png'

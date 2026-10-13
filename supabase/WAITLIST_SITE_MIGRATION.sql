@@ -87,6 +87,27 @@ CREATE TABLE IF NOT EXISTS public.waitlist_site_content (
     hero_image_alt TEXT NOT NULL DEFAULT 'Online Bar early access',
     age_group_tracks JSONB NOT NULL DEFAULT '{}'::JSONB,
     genre_tracks JSONB NOT NULL DEFAULT '{}'::JSONB,
+    campaign_settings JSONB NOT NULL DEFAULT '{
+        "brandName": "Midnight Society KE",
+        "brandDescriptor": "KENYA · A PRIVATE WORLD OF EXPERIENCES",
+        "tagline": "Some nights become stories.",
+        "subheadline": "Others become legends.",
+        "presentedBy": "Presented by ONLINE BAR · Nairobi, Kenya",
+        "instagramHandle": "@midnight.society.ke",
+        "ctaLabel": "Claim your place",
+        "phase": "signal",
+        "announcement": "Nairobi, you’re on notice. Some nights you hear about the next morning. Some nights you wish you’d known about sooner. And some nights? You had to be there. The first chapter is coming. The details will be revealed as they’re confirmed. When the invitation drops, will you be on the list?",
+        "eventTitle": "The first chapter is coming.",
+        "eventDetails": "Music, experiences, unexpected moments and nights worth remembering. Join the list for confirmed updates.",
+        "venueNotice": "Event details will be shared when they’re confirmed.",
+        "registrationUrl": "",
+        "registrationLabel": "View confirmed event details",
+        "experiences": [
+            {"id": "wine", "title": "Wine & good living", "description": "Curated wine experiences and good company.", "icon": "◈", "active": true},
+            {"id": "adventure", "title": "Unexpected experiences", "description": "New places, new stories and shared moments.", "icon": "✦", "active": true},
+            {"id": "music", "title": "Music & nights out", "description": "Live music and future Soul Fest updates.", "icon": "♫", "active": true}
+        ]
+    }'::JSONB,
     launch_at TIMESTAMPTZ,
     tokens_per_referral INTEGER NOT NULL DEFAULT 10,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -95,6 +116,27 @@ CREATE TABLE IF NOT EXISTS public.waitlist_site_content (
 ALTER TABLE public.waitlist_site_content
     ADD COLUMN IF NOT EXISTS age_group_tracks JSONB NOT NULL DEFAULT '{}'::JSONB,
     ADD COLUMN IF NOT EXISTS genre_tracks JSONB NOT NULL DEFAULT '{}'::JSONB,
+    ADD COLUMN IF NOT EXISTS campaign_settings JSONB NOT NULL DEFAULT '{
+        "brandName": "Midnight Society KE",
+        "brandDescriptor": "KENYA · A PRIVATE WORLD OF EXPERIENCES",
+        "tagline": "Some nights become stories.",
+        "subheadline": "Others become legends.",
+        "presentedBy": "Presented by ONLINE BAR · Nairobi, Kenya",
+        "instagramHandle": "@midnight.society.ke",
+        "ctaLabel": "Claim your place",
+        "phase": "signal",
+        "announcement": "Nairobi, you’re on notice. Some nights you hear about the next morning. Some nights you wish you’d known about sooner. And some nights? You had to be there. The first chapter is coming. The details will be revealed as they’re confirmed. When the invitation drops, will you be on the list?",
+        "eventTitle": "The first chapter is coming.",
+        "eventDetails": "Music, experiences, unexpected moments and nights worth remembering. Join the list for confirmed updates.",
+        "venueNotice": "Event details will be shared when they’re confirmed.",
+        "registrationUrl": "",
+        "registrationLabel": "View confirmed event details",
+        "experiences": [
+            {"id": "wine", "title": "Wine & good living", "description": "Curated wine experiences and good company.", "icon": "◈", "active": true},
+            {"id": "adventure", "title": "Unexpected experiences", "description": "New places, new stories and shared moments.", "icon": "✦", "active": true},
+            {"id": "music", "title": "Music & nights out", "description": "Live music and future Soul Fest updates.", "icon": "♫", "active": true}
+        ]
+    }'::JSONB,
     ADD COLUMN IF NOT EXISTS launch_at TIMESTAMPTZ,
     ADD COLUMN IF NOT EXISTS tokens_per_referral INTEGER NOT NULL DEFAULT 10,
     DROP CONSTRAINT IF EXISTS waitlist_site_content_tokens_per_referral_check,
@@ -108,6 +150,17 @@ GRANT SELECT, INSERT, UPDATE ON public.waitlist_site_content TO service_role;
 INSERT INTO public.waitlist_site_content (id)
 VALUES ('default')
 ON CONFLICT (id) DO NOTHING;
+
+UPDATE public.waitlist_site_content
+SET eyebrow = 'MIDNIGHT SOCIETY · KENYA',
+    headline = 'YOUR INVITATION STARTS HERE',
+    intro = 'Others become legends. The launch, the music, the people, the moments you had to be there for.',
+    benefit_one = 'A first look at what’s coming',
+    benefit_two = 'Choose the experiences you love',
+    benefit_three = 'Get the invitation when it drops',
+    hero_image_alt = 'Midnight Society Kenya — a private world of experiences'
+WHERE id = 'default'
+  AND eyebrow = 'A BETTER NIGHT STARTS HERE';
 
 UPDATE public.waitlist_site_content
 SET tokens_per_referral = 3

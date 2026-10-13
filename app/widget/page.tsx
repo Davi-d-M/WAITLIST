@@ -8,8 +8,8 @@ type Reward = { id: string; name: string; description: string; image_url: string
 type Claim = { id: string; reward_id: string; tokens_spent: number; status: 'pending' | 'approved' | 'rejected'; created_at: string };
 type Generation = { generation: number; referralsJoined: number; tokensEarned: number };
 type Progress = { referralCode: string; ageGroup: string | null; referralsJoined: number; directReferralsJoined: number; generationBreakdown: Generation[]; tokensPerJoinedReferral: number; tokensEarned: number; tokensAvailable: number; claims: Claim[] };
-type Content = { launch_at: string | null; tokens_per_referral: number };
-const defaultContent: Content = { launch_at: null, tokens_per_referral: 3 };
+type Content = { launch_at: string | null; tokens_per_referral: number; campaign_settings: { brandName: string } };
+const defaultContent: Content = { launch_at: null, tokens_per_referral: 3, campaign_settings: { brandName: 'Midnight Society KE' } };
 function shareLabel(group: string | null) {
   if (group === '18_20' || group === '21_24') return 'Share the buzz';
   if (group === '25_34') return 'Tell a friend';
@@ -103,9 +103,9 @@ export default function WaitlistWidgetPage() {
   };
 
   const shareMessage = useMemo(() => {
-    const invitation = `Join me on the Online Bar early-access list. Every new signup in my referral chain earns me 3 tokens.`;
+    const invitation = `Join me on the ${content.campaign_settings.brandName} list, powered by ONLINE BAR. Every new signup in my referral chain earns me 3 tokens.`;
     return `${invitation} ${shareUrl}`;
-  }, [shareUrl]);
+  }, [content.campaign_settings.brandName, shareUrl]);
 
   const installDashboard = async () => {
     setError('');
@@ -184,23 +184,23 @@ export default function WaitlistWidgetPage() {
     }
   };
 
-  if (loading) return <main className="widget-shell"><p className="eyebrow"><span /> ONLINE BAR DASHBOARD</p><h1>Loading your countdown…</h1></main>;
+  if (loading) return <main className="widget-shell"><p className="eyebrow"><span /> MIDNIGHT SOCIETY MEMBER PASS</p><h1>Loading your countdown…</h1></main>;
   if (!progress) return (
     <main className="widget-shell">
-      <Link href="/" className="brand"><span className="brand-mark">OB</span> ONLINE BAR</Link>
+      <Link href="/" className="brand"><span className="brand-mark">✦</span> MIDNIGHT SOCIETY KE</Link>
       <p className="eyebrow"><span /> YOUR HOME-SCREEN DASHBOARD</p>
       <h1>{error ? 'Dashboard unavailable.' : 'Your invite link is missing.'}</h1>
       <p className="muted">{error || 'Join the waitlist first, then open this dashboard from your personal invite link to see your referrals and tokens.'}</p>
-      <Link className="button button-primary" href="/">Join early access <span>↗</span></Link>
+      <Link className="button button-primary" href="/">Claim your place <span>↗</span></Link>
     </main>
   );
 
   return (
     <main className="widget-shell">
-      <header className="widget-header"><Link className="brand" href="/"><span className="brand-mark">OB</span><span>ONLINE BAR<span className="brand-sub">YOUR EARLY-ACCESS DASHBOARD</span></span></Link><span className="top-status"><i /> 18+ · EARLY ACCESS</span></header>
+      <header className="widget-header"><Link className="brand" href="/"><span className="brand-mark">✦</span><span>{content.campaign_settings.brandName}<span className="brand-sub">YOUR MEMBER PASS · BY ONLINE BAR</span></span></Link><span className="top-status"><i /> 18+ · PRIVATE EXPERIENCES</span></header>
       {!isInstalled && <section className="install-card" aria-label="Add your countdown dashboard to your home screen">
         <p className="eyebrow"><span /> KEEP YOUR COUNTDOWN CLOSE</p>
-        <h2>Install your OB dashboard.</h2>
+        <h2>Install your Midnight Society pass.</h2>
         <p>This adds a dashboard shortcut you can open for your live countdown, downline referrals and tokens.</p>
         {installPromptAvailable
           ? <button className="button button-primary" type="button" onClick={() => void installDashboard()}>Install dashboard <span>↗</span></button>
@@ -211,7 +211,7 @@ export default function WaitlistWidgetPage() {
               : 'On Chrome: open ⋮ → “Cast, save, and share” → “Install page as app.” On Edge: open ⋯ → “Apps” → “Install this site as an app.” If neither option appears, open this page in Chrome or Edge.'}</p>}
       </section>}
       {contentWarning && <p className="error" role="status">{contentWarning}</p>}
-      {isInstalled && <p className="inline-note" role="status">Your OB countdown dashboard is installed. Open it from your home screen any time.</p>}
+      {isInstalled && <p className="inline-note" role="status">Your Midnight Society countdown is installed. Open it from your home screen any time.</p>}
       <section className="widget-countdown">
         <p className="eyebrow"><span /> THE LAUNCH IS GETTING CLOSER</p>
         <h1>{countdown(content.launch_at, now)}</h1>
@@ -253,14 +253,14 @@ export default function WaitlistWidgetPage() {
       </section>
       {!!progress.claims.length && <section className="widget-claims"><h2>Your souvenir requests</h2><ul>{progress.claims.map(claim => <li key={claim.id}><b>{rewards.find(reward => reward.id === claim.reward_id)?.name || 'Souvenir'}</b><span>{claim.tokens_spent} tokens · {claim.status}</span></li>)}</ul></section>}
       <aside className="support-cta">
-        <div><p className="eyebrow"><span /> NEED A HAND?</p><p>Need help with your invite, tokens or rewards? Message our support team on WhatsApp.</p></div>
-        <a href="https://wa.me/254769345599?text=Hi%20Online%20Bar%2C%20I%20need%20support%20with%20my%20early-access%20account." rel="noreferrer" target="_blank">WhatsApp support · 07 69345599 <span aria-hidden="true">↗</span></a>
+        <div><p className="eyebrow"><span /> NEED A HAND?</p><p>Need help with your invite, tokens or rewards? Message ONLINE BAR support on WhatsApp.</p></div>
+        <a href="https://wa.me/254769345599?text=Hi%20Online%20Bar%2C%20I%20need%20support%20with%20my%20Midnight%20Society%20member%20pass." rel="noreferrer" target="_blank">WhatsApp support · 07 69345599 <span aria-hidden="true">↗</span></a>
       </aside>
-      <footer className="site-footer"><Link href="/">ONLINE BAR</Link><span>YOUR INVITE CODE · {progress.referralCode}</span><span>GOOD TIMES, DELIVERED.</span></footer>
+      <footer className="site-footer"><Link href="/">{content.campaign_settings.brandName}</Link><span>YOUR INVITE CODE · {progress.referralCode}</span><span>POWERED BY ONLINE BAR</span></footer>
       {shareDialogOpen && <div className="share-dialog-backdrop" onClick={() => setShareDialogOpen(false)}>
         <section aria-labelledby="widget-share-title" aria-modal="true" className="share-dialog" onClick={event => event.stopPropagation()} role="dialog">
           <button aria-label="Close sharing options" className="share-dialog-close" onClick={() => setShareDialogOpen(false)} type="button">×</button>
-          <p className="eyebrow"><span /> PASS THE GOOD TIMES ON</p>
+          <p className="eyebrow"><span /> PASS THE INVITATION ON</p>
           <h2 id="widget-share-title">{shareLabel(progress.ageGroup)}</h2>
           <p className="share-dialog-copy">Choose an app. Your personal invite link is included. Every new signup in your referral chain earns you 3 tokens.</p>
           <div className="share-platform-grid">
@@ -271,7 +271,7 @@ export default function WaitlistWidgetPage() {
             <button onClick={() => void shareToApp('snapchat')} type="button">Snapchat</button>
             <a href={`https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareLabel(progress.ageGroup))}`} rel="noreferrer" target="_blank">Telegram</a>
             <a href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`} rel="noreferrer" target="_blank">Facebook</a>
-            <a href={`mailto:?subject=${encodeURIComponent('Join me on Online Bar early access')}&body=${encodeURIComponent(shareMessage)}`}>Email</a>
+            <a href={`mailto:?subject=${encodeURIComponent(`Join me at ${content.campaign_settings.brandName}`)}&body=${encodeURIComponent(shareMessage)}`}>Email</a>
             <a href={`sms:?body=${encodeURIComponent(shareMessage)}`}>Text message</a>
             {supportsNativeShare && <button className="share-platform-more" onClick={() => void shareWithDevice()} type="button">More apps on my phone…</button>}
             <button className="share-platform-copy" onClick={() => void copyInvite()} type="button">Copy invite</button>
