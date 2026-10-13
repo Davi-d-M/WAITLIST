@@ -817,10 +817,10 @@ export default function Home() {
 
       {(step === 1 || step === 2) && (
         <section className="form-layout">
-          <div className="form-aside"><p className="eyebrow"><span /> YOUR EARLY ACCESS</p><h1>{step === 1 ? 'First, your neighbourhood.' : 'Make it yours.'}</h1><p>We’re opening in selected areas first. Your area helps us plan where to go next.</p><div className="steps"><span className={step === 1 ? 'current' : 'complete'}>01</span><i /><span className={step === 2 ? 'current' : ''}>02</span><i /><span>03</span></div><small>LOCATION <b>·</b> YOUR DETAILS <b>·</b> YOU’RE IN</small></div>
+          <div className="form-aside"><p className="eyebrow"><span /> YOUR EARLY ACCESS</p><h1>{step === 1 ? 'First, your neighbourhood.' : 'Make it yours.'}</h1><p>We’re preparing a same-day delivery system for late-night treats. Your town and neighbourhood help us map demand and prioritize delivery coverage before launch.</p><div className="steps"><span className={step === 1 ? 'current' : 'complete'}>01</span><i /><span className={step === 2 ? 'current' : ''}>02</span><i /><span>03</span></div><small>LOCATION <b>·</b> YOUR DETAILS <b>·</b> YOU’RE IN</small></div>
           {step === 1 ? (
             <div className="form-card">
-              <p className="eyebrow">STEP 01 — DELIVERY AREA</p><h2>Where should we deliver?</h2>              <p className="muted">Tell us your neighbourhood and a nearby landmark so we can plan where to launch next. GPS is optional.</p>
+              <p className="eyebrow">STEP 01 — DELIVERY AREA</p><h2>Where should we be ready to deliver?</h2>              <p className="muted">We’re collecting neighborhood-level demand to prepare a same-day delivery system for late-night treats. Your area helps us prioritize coverage before launch day; this is planning only, not a delivery booking or guarantee. GPS is optional.</p>
               <button type="button" className="button button-outline" onClick={requestLocation} disabled={busy}>⌖ {busy ? 'Finding your area…' : 'Use my current location'}</button>
               {gpsStatus && <p className="inline-note" role="status">{gpsStatus}</p>}
               <div className="divider"><span>OR ENTER IT YOURSELF</span></div>
@@ -832,7 +832,7 @@ export default function Home() {
               {areas.length > 0 && <label>Estate / neighbourhood<select value={location.area} onChange={event => setManualArea(event.target.value)}><option value="">Choose an area</option>{areas.map(area => <option key={area}>{area}</option>)}</select></label>}
               <label>Enter an area {areas.length ? <span className="optional">(or add a more specific estate)</span> : null}<input value={customArea} onChange={event => { setCustomArea(event.target.value); if (event.target.value) setLocation(current => ({ ...current, verified: false, accuracy: null })); }} placeholder="e.g. Westlands, Kilimani, Nyali" maxLength={100} /></label>
               <label>Nearby landmark <span className="optional">OPTIONAL</span><input value={landmark} onChange={event => setLandmark(event.target.value)} placeholder="e.g. Sarit Centre, Westlands" maxLength={120} /></label>
-              <p className="privacy-note">We use your area to plan launch availability. Exact GPS coordinates are used only to find an approximate area and are not saved.</p>
+              <p className="privacy-note">Enter your town and neighborhood/estate, not a home or street address; the nearby landmark is optional. We use this area to plan launch availability for same-day late-night treat delivery. If you choose GPS, precise coordinates are used only to identify an approximate area and are not saved.</p>
               <button className="button button-primary full" disabled={busy || !resolvedArea || !resolvedCity || !location.county.trim()} onClick={() => setStep(2)}>Continue <span>→</span></button>
               {error && <p className="error" role="alert">{error}</p>}
             </div>
@@ -886,6 +886,7 @@ export default function Home() {
             : serviceAreaStatus === 'outside_area'
               ? `We’re not serving ${resolvedArea}, ${resolvedCity} just yet, but we’re coming soon. We’ve recorded your area${landmark.trim() ? ` near ${landmark.trim()}` : ''} to help us plan where to expand next, and we’ll keep you posted.`
               : `We’ve recorded demand for ${resolvedArea}, ${resolvedCity}${landmark.trim() ? ` near ${landmark.trim()}` : ''}. We’re still confirming launch coverage, and we’ll share an update as soon as we know more.`}</p>
+          <p className="success-copy">We’re also using neighborhood-level demand to prepare a same-day delivery system for late-night treats, so we can prioritize coverage before launch day. This is planning only: the service is not live yet, and choosing an area does not guarantee delivery availability.</p>
           <p className="success-copy">You’re now on the {siteContent.campaign_settings.brandName} list, powered by ONLINE BAR. Keep an eye on the contact channel(s) you selected for your update.</p>
           <aside className="halloween-invite halloween-invite-success" aria-label={`${siteContent.campaign_settings.brandName} update`}>
             <span className="halloween-invite-icon" aria-hidden="true">✦</span>
