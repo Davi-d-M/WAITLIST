@@ -51,10 +51,20 @@ type FitProfile = {
   group_plan: string;
   fit_help_requests?: Array<{ service_key: string }>;
 };
+type FitOffering = {
+  id: string; service_key: string; title: string; description: string;
+  image_url: string | null; price_kes: number | null; updated_at: string;
+};
+type FitBooking = {
+  id: string; offering_id: string; status: string; member_message: string;
+  created_at: string; offering: { title: string; service_key: string; price_kes: number | null } | null;
+};
 type FitPayload = {
   profile: FitProfile | null;
   consent: { fitServiceUpdates: Record<string, boolean>; providerIntroduction: Record<string, boolean> };
   settings: FitSettings;
+  offerings: FitOffering[];
+  bookings: FitBooking[];
   error?: string;
 };
 
@@ -79,9 +89,14 @@ export default function FitStudioForm() {
   const [providerChannels, setProviderChannels] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [ready, setReady] = useState(false);
+  const [hasProfile, setHasProfile] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [offerings, setOfferings] = useState<FitOffering[]>([]);
+  const [bookings, setBookings] = useState<FitBooking[]>([]);
+  const [bookingMessage, setBookingMessage] = useState('');
+  const [requestingBooking, setRequestingBooking] = useState('');
 
   const load = useCallback(async (memberToken: string) => {
     const response = await fetch('/api/fit-studio', {
@@ -91,7 +106,10 @@ export default function FitStudioForm() {
     const result = await response.json() as FitPayload;
     if (!response.ok) throw new Error(result.error || 'Fit Studio could not be loaded.');
     setSettings(result.settings);
+    setOfferings(result.offerings || []);
+    setBookings(result.bookings || []);
     const profile = result.profile;
+    setHasProfile(Boolean(profile));
     if (profile) {
       setConcept(profile.concept);
       setCharacterTheme(profile.character_theme || '');
@@ -155,11 +173,43 @@ export default function FitStudioForm() {
       });
       const result = await response.json() as { success?: boolean; error?: string };
       if (!response.ok || !result.success) throw new Error(result.error || 'Your Fit Studio profile could not be saved.');
-      setNotice('Your Fit Studio profile is saved. The team will review demand before confirming any provider or availability.');
+      setHasProfile(true);
+      try {
+        await load(token);
+        setNotice('Your Fit Studio profile is saved. The team will review demand before confirming any provider or availability.');
+      } catch {
+        setNotice('Your Fit Studio profile was saved. Refresh to load offers matching your updated requests.');
+      }
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Your Fit Studio profile could not be saved.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const requestBooking = async (offeringId: string) => {
+    setError('');
+    setNotice('');
+    setRequestingBooking(offeringId);
+    try {
+      const response = await fetch('/api/fit-studio', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+        body: JSON.stringify({ action: 'request_booking', offeringId, message: bookingMessage })
+      });
+      const result = await response.json() as { success?: boolean; error?: string };
+      if (!response.ok || !result.success) throw new Error(result.error || 'Your booking request could not be saved.');
+      setBookingMessage('');
+      try {
+        await load(token);
+        setNotice('Booking request sent. It is not confirmed until the team reviews availability and terms.');
+      } catch {
+        setNotice('Booking request sent, but its latest status could not be loaded. Refresh this page to check it.');
+      }
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Your booking request could not be saved.');
+    } finally {
+      setRequestingBooking('');
     }
   };
 
@@ -199,6 +249,35 @@ export default function FitStudioForm() {
           <label className="fit-option" key={value}><input type="checkbox" checked={helpRequested.includes(value)} onChange={() => toggleOption(helpRequested, value, setHelpRequested)} /><span>{label}</span></label>
         ))}</div>
       </fieldset>
+
+      <section className="fit-offers" aria-labelledby="fit-offers-title">
+        <h2 id="fit-offers-title">Offers matching your requests</h2>
+        <p>Published options for the help categories in your saved Fit Studio profile. Booking requests are not confirmed reservations or payments.</p>
+        {!hasProfile
+          ? <p className="fit-offers-empty">Save your Fit Studio profile first to see offers for your selected categories.</p>
+          : offerings.length
+            ? <div className="fit-offers-grid">
+              {offerings.map(offer => {
+                const booking = bookings.find(item => item.offering_id === offer.id);
+                const imageUrl = offer.image_url?.replaceAll('"', '%22');
+                return <article className="fit-offer-card" key={offer.id}>
+                  {imageUrl && <div className="fit-offer-image" role="img" aria-label={offer.title + ' photo'} style={{ backgroundImage: 'url("' + imageUrl + '")' }} />}
+                  <p className="eyebrow">{helpOptions.find(([key]) => key === offer.service_key)?.[1] || offer.service_key}</p>
+                  <h3>{offer.title}</h3>
+                  {offer.description && <p>{offer.description}</p>}
+                  <b>{offer.price_kes === null ? 'Price on request' : 'KSh ' + new Intl.NumberFormat('en-KE').format(offer.price_kes)}</b>
+                  {booking
+                    ? <p className="fit-booking-status" role="status">Request status: {booking.status.replaceAll('_', ' ')}. The team will review availability and terms.</p>
+                    : <button type="button" className="button button-primary" disabled={requestingBooking === offer.id} onClick={() => void requestBooking(offer.id)}>{requestingBooking === offer.id ? 'Sending request…' : 'Request to book'}</button>}
+                </article>;
+              })}
+            </div>
+            : <p className="fit-offers-empty">No published offers match your saved help categories yet. Check back later for new options.</p>}
+        {hasProfile && offerings.length > 0 && <label className="form-card-label" htmlFor="fit-booking-message">Optional note to the team
+          <textarea id="fit-booking-message" className="fit-text-input" maxLength={500} value={bookingMessage} onChange={event => setBookingMessage(event.target.value)} placeholder="Add a detail for your booking request" />
+        </label>}
+        {bookings.length > 0 && <div className="fit-booking-list"><h3>Your booking requests</h3>{bookings.map(booking => <p key={booking.id}><b>{booking.offering?.title || 'Fit Studio offer'}</b> · {booking.status.replaceAll('_', ' ')}</p>)}</div>}
+      </section>
 
       <fieldset>
         <legend>05 — What is your budget? <span className="optional">OPTIONAL</span></legend>

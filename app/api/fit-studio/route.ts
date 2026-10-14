@@ -61,10 +61,10 @@ async function resolveMember(db: NonNullable<ReturnType<typeof database>>, reque
 }
 
 function unavailable(dbError?: { code?: string } | null) {
-  const missing = dbError && ['42P01', 'PGRST205', 'PGRST204'].includes(dbError.code || '');
+  const missing = dbError && ['42P01', 'PGRST202', 'PGRST205', 'PGRST204', '42883'].includes(dbError.code || '');
   return NextResponse.json({
     error: missing
-      ? 'Fit Studio is not set up yet. Apply supabase/WAITLIST_FIT_STUDIO_MIGRATION.sql in the shared Supabase project.'
+      ? 'Fit Studio is not set up yet. Apply the Fit Studio and marketplace migrations in the shared Supabase project.'
       : 'Fit Studio is temporarily unavailable. Please try again.'
   }, { status: 503 });
 }
@@ -101,6 +101,27 @@ export async function GET(request: Request) {
     console.error('[FitStudio] Could not load member profile:', error.code);
     return unavailable(error);
   }
+  const requestedServices = (profileResult.data?.fit_help_requests || [])
+    .map((item: { service_key: string }) => item.service_key);
+  const [offeringsResult, bookingsResult] = await Promise.all([
+    requestedServices.length
+      ? db.from('fit_service_offerings')
+        .select('id,service_key,title,description,image_url,price_kes,updated_at')
+        .eq('published', true)
+        .eq('available', true)
+        .in('service_key', requestedServices)
+        .order('updated_at', { ascending: false })
+      : Promise.resolve({ data: [], error: null }),
+    db.from('fit_booking_requests')
+      .select('id,offering_id,status,member_message,created_at,updated_at,offering:fit_service_offerings!inner(title,service_key,price_kes)')
+      .eq('member_id', memberId)
+      .order('created_at', { ascending: false })
+  ]);
+  const marketplaceError = offeringsResult.error || bookingsResult.error;
+  if (marketplaceError) {
+    console.error('[FitStudio] Could not load offers or booking requests:', marketplaceError.code);
+    return unavailable(marketplaceError);
+  }
   const currentConsent = {
     fitServiceUpdates: {} as Record<string, boolean>,
     providerIntroduction: {} as Record<string, boolean>
@@ -114,7 +135,9 @@ export async function GET(request: Request) {
   return NextResponse.json({
     profile: profileResult.data || null,
     consent: currentConsent,
-    settings: settingsResult.data
+    settings: settingsResult.data,
+    offerings: offeringsResult.data || [],
+    bookings: bookingsResult.data || []
   }, { headers: { 'Cache-Control': 'private, no-store, max-age=0' } });
 }
 
@@ -144,6 +167,30 @@ export async function POST(request: Request) {
     body = JSON.parse(raw) as Record<string, unknown>;
   } catch {
     return NextResponse.json({ error: 'Review your answers and try again.' }, { status: 400 });
+  }
+  if (body.action === 'request_booking') {
+    const offeringId = typeof body.offeringId === 'string' ? body.offeringId : '';
+    const message = typeof body.message === 'string' ? body.message.trim() : '';
+    if (!/^[0-9a-f-]{36}$/i.test(offeringId) || message.length > 500) {
+      return NextResponse.json({ error: 'Choose an available offer and keep your note under 500 characters.' }, { status: 400 });
+    }
+    const { data, error } = await db.rpc('request_waitlist_fit_booking', {
+      p_member_id: memberId,
+      p_offering_id: offeringId,
+      p_member_message: message
+    });
+    if (error || !data) {
+      if (error?.code === '23505') {
+        return NextResponse.json({ error: 'You have already requested this offer. Check your booking status below.' }, { status: 409 });
+      }
+      console.error('[FitStudio] Could not create booking request:', error?.code);
+      if (error && ['42P01', 'PGRST202', 'PGRST204', 'PGRST205', '42883'].includes(error.code || '')) return unavailable(error);
+      const unavailableOffer = error?.message.includes('not currently available');
+      return NextResponse.json({
+        error: unavailableOffer ? 'This offer is no longer available.' : 'Your booking request could not be saved. Save your profile and try again.'
+      }, { status: unavailableOffer ? 409 : 400 });
+    }
+    return NextResponse.json({ success: true, bookingId: data }, { headers: { 'Cache-Control': 'no-store' } });
   }
   const concept = typeof body.concept === 'string' ? body.concept : '';
   const characterTheme = typeof body.characterTheme === 'string' ? body.characterTheme.trim().slice(0, 120) : '';

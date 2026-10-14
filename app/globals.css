@@ -144,6 +144,21 @@ h1 em,.success-card h1 em{font-family:Georgia,"Times New Roman",serif;color:var(
 .fit-option input{width:17px;height:17px;accent-color:var(--primary);flex:none}
 .fit-text-input{width:100%;min-height:46px;margin-top:8px;padding:10px 12px;border:1px solid var(--line);background:#fbfcf9;color:var(--ink)}
 .fit-consent{margin-top:22px;padding:16px;border:1px solid var(--line);background:var(--cream)}
+.fit-offers{margin-top:28px;padding-top:22px;border-top:1px solid var(--line)}
+.fit-offers h2{font-size:22px;letter-spacing:-.03em}
+.fit-offers>p{margin-top:8px;color:var(--muted);font-size:13px;line-height:1.6}
+.fit-offers-empty{padding:14px;background:var(--cream)}
+.fit-offers-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:14px;margin-top:16px}
+.fit-offer-card{display:flex;flex-direction:column;align-items:flex-start;gap:10px;padding:14px;border:1px solid var(--line);background:#fff}
+.fit-offer-image{width:100%;height:170px;background-position:center;background-size:cover}
+.fit-offer-card h3{font-size:18px;line-height:1.25}
+.fit-offer-card>p:not(.eyebrow){color:var(--muted);font-size:13px;line-height:1.55}
+.fit-offer-card .eyebrow{margin:0;color:var(--primary);font-size:9px}
+.fit-offer-card .button{margin-top:auto}
+.fit-booking-status{padding:10px;background:var(--primary-soft);color:var(--ink)!important;font-size:12px!important}
+.fit-booking-list{margin-top:18px;padding:14px;background:var(--cream)}
+.fit-booking-list h3{margin-bottom:8px;font-size:14px}
+.fit-booking-list p{padding:5px 0;color:var(--muted);font-size:12px}
 .fit-studio-notice{padding:14px;border-left:4px solid var(--primary);background:var(--primary-soft);color:#721b1b;font-size:13px;line-height:1.65}
 .fit-studio-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:24px}
 .fit-studio-prompt{margin-top:24px}
