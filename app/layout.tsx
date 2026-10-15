@@ -31,7 +31,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <body>
         <PwaInstallProvider>
           {children}
-          <SessionReplay appName="Waitlist" />
+          <SessionReplay />
           <SessionReplayConsent />
         </PwaInstallProvider>
       </body>
