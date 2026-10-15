@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic';
 
 const ageGroups = new Set(['18_20', '21_24', '25_34', '35_44', '45_plus']);
 const musicGenres = new Set(['reggae', 'genge', 'gengetone', 'soul', 'rnb', 'classic', 'love_romance', 'afrobeats', 'hip_hop', 'pop', 'other']);
-const eventTypes = new Set(['page_open', 'age_group_selected', 'music_started', 'music_heard_80']);
+const eventTypes = new Set(['page_open', 'age_group_selected', 'music_genre_selected', 'music_started', 'music_heard_80']);
 const sessionIdPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function getDatabase() {
@@ -29,6 +29,9 @@ export async function POST(request: Request) {
   const ageGroup = typeof body.ageGroup === 'string' ? body.ageGroup : null;
   const trackTitle = typeof body.trackTitle === 'string' ? body.trackTitle.trim() : null;
   const musicGenre = typeof body.musicGenre === 'string' ? body.musicGenre : null;
+  if (body.musicGenre !== undefined && body.musicGenre !== null && typeof body.musicGenre !== 'string') {
+    return NextResponse.json({ error: 'The music genre is invalid.' }, { status: 400 });
+  }
   if (!eventTypes.has(eventType) || !sessionIdPattern.test(sessionId)) {
     return NextResponse.json({ error: 'The analytics event is invalid.' }, { status: 400 });
   }
@@ -44,6 +47,10 @@ export async function POST(request: Request) {
   if (eventType === 'music_started' || eventType === 'music_heard_80') {
     if (!ageGroup || !trackTitle || trackTitle.length > 120) {
       return NextResponse.json({ error: 'A valid age group and track are required for this event.' }, { status: 400 });
+    }
+  } else if (eventType === 'music_genre_selected') {
+    if (!('musicGenre' in body) || trackTitle) {
+      return NextResponse.json({ error: 'A music style choice is required for this event.' }, { status: 400 });
     }
   } else if (trackTitle || musicGenre) {
     return NextResponse.json({ error: 'A track is not expected for this event.' }, { status: 400 });
