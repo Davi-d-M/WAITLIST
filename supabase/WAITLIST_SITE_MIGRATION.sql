@@ -631,19 +631,32 @@ GRANT EXECUTE ON FUNCTION public.get_waitlist_intelligence() TO service_role;
 CREATE TABLE IF NOT EXISTS public.waitlist_site_analytics_events (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     session_id UUID NOT NULL,
-    event_type TEXT NOT NULL CHECK (event_type IN ('page_open', 'age_group_selected', 'music_started', 'music_heard_80')),
+    event_type TEXT NOT NULL CHECK (event_type IN ('page_open', 'age_group_selected', 'music_genre_selected', 'music_started', 'music_heard_80')),
     age_group TEXT CHECK (age_group IS NULL OR age_group IN ('18_20', '21_24', '25_34', '35_44', '45_plus')),
     music_genre TEXT CHECK (music_genre IS NULL OR music_genre IN ('reggae', 'genge', 'gengetone', 'soul', 'rnb', 'classic', 'love_romance', 'afrobeats', 'hip_hop', 'pop', 'other')),
     track_title TEXT CHECK (track_title IS NULL OR length(track_title) <= 120),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     CHECK (
         (event_type IN ('music_started', 'music_heard_80') AND age_group IS NOT NULL AND track_title IS NOT NULL)
-        OR (event_type NOT IN ('music_started', 'music_heard_80') AND track_title IS NULL)
+        OR (event_type = 'music_genre_selected' AND track_title IS NULL)
+        OR (event_type IN ('page_open', 'age_group_selected') AND track_title IS NULL AND music_genre IS NULL)
     )
 );
 
 ALTER TABLE public.waitlist_site_analytics_events
     ADD COLUMN IF NOT EXISTS music_genre TEXT CHECK (music_genre IS NULL OR music_genre IN ('reggae', 'genge', 'gengetone', 'soul', 'rnb', 'classic', 'love_romance', 'afrobeats', 'hip_hop', 'pop', 'other'));
+
+ALTER TABLE public.waitlist_site_analytics_events
+    DROP CONSTRAINT IF EXISTS waitlist_site_analytics_events_event_type_check,
+    DROP CONSTRAINT IF EXISTS waitlist_site_analytics_events_check,
+    DROP CONSTRAINT IF EXISTS waitlist_site_analytics_event_shape_check,
+    ADD CONSTRAINT waitlist_site_analytics_events_event_type_check
+        CHECK (event_type IN ('page_open', 'age_group_selected', 'music_genre_selected', 'music_started', 'music_heard_80')),
+    ADD CONSTRAINT waitlist_site_analytics_event_shape_check CHECK (
+        (event_type IN ('music_started', 'music_heard_80') AND age_group IS NOT NULL AND track_title IS NOT NULL)
+        OR (event_type = 'music_genre_selected' AND track_title IS NULL)
+        OR (event_type IN ('page_open', 'age_group_selected') AND track_title IS NULL AND music_genre IS NULL)
+    );
 
 CREATE INDEX IF NOT EXISTS waitlist_site_analytics_created_type_idx
     ON public.waitlist_site_analytics_events (created_at DESC, event_type);
@@ -693,6 +706,36 @@ AS $$
                     AND events.created_at >= COALESCE(p_since, now() - INTERVAL '30 days')
                 GROUP BY age_bands.group_id, age_bands.label, age_bands.sort_order
             ) AS bands
+        ), '[]'::JSONB),
+        'genre_picks', COALESCE((
+            SELECT jsonb_agg(jsonb_build_object(
+                'genre', genre_options.genre_id,
+                'label', genre_options.label,
+                'visitors', genre_options.visitors
+            ) ORDER BY genre_options.sort_order)
+            FROM (
+                SELECT choices.genre_id, choices.label, choices.sort_order,
+                    count(DISTINCT events.session_id)::BIGINT AS visitors
+                FROM (VALUES
+                    (NULL::TEXT, 'My age-group mix', 1),
+                    ('reggae', 'Reggae', 2),
+                    ('genge', 'Genge', 3),
+                    ('gengetone', 'Gengetone', 4),
+                    ('soul', 'Soul', 5),
+                    ('rnb', 'R&B', 6),
+                    ('classic', 'Classics', 7),
+                    ('love_romance', 'Love & Romance', 8),
+                    ('afrobeats', 'Afrobeats', 9),
+                    ('hip_hop', 'Hip-hop', 10),
+                    ('pop', 'Pop', 11),
+                    ('other', 'Other', 12)
+                ) AS choices(genre_id, label, sort_order)
+                LEFT JOIN public.waitlist_site_analytics_events AS events
+                    ON events.event_type = 'music_genre_selected'
+                    AND events.music_genre IS NOT DISTINCT FROM choices.genre_id
+                    AND events.created_at >= COALESCE(p_since, now() - INTERVAL '30 days')
+                GROUP BY choices.genre_id, choices.label, choices.sort_order
+            ) AS genre_options
         ), '[]'::JSONB),
         'music', COALESCE((
             SELECT jsonb_agg(jsonb_build_object(

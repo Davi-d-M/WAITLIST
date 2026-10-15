@@ -36,6 +36,50 @@ const musicGenres = [
   { id: 'pop', label: 'Pop' },
   { id: 'other', label: 'Other' }
 ];
+type MusicGenre = typeof musicGenres[number];
+
+function MusicStylePicker({
+  value,
+  tracks,
+  ageTrackAvailable,
+  onChange,
+  compact = false
+}: {
+  value: string;
+  tracks: SiteContent['genre_tracks'];
+  ageTrackAvailable: boolean;
+  onChange: (genre: string) => void;
+  compact?: boolean;
+}) {
+  return (
+    <div className={`music-style-picker${compact ? ' compact' : ''}`} role="group" aria-label="Choose your music style">
+      <button
+        type="button"
+        className={`music-style-choice${value === '' ? ' selected' : ''}`}
+        aria-pressed={value === ''}
+        onClick={() => onChange('')}
+      >
+        <span>My age-group mix</span>
+        <small>{ageTrackAvailable ? 'Age-based mix' : 'No sample yet'}</small>
+      </button>
+      {musicGenres.map((genre: MusicGenre) => {
+        const hasTrack = Boolean(tracks[genre.id]);
+        return (
+          <button
+            key={genre.id}
+            type="button"
+            className={`music-style-choice${value === genre.id ? ' selected' : ''}`}
+            aria-pressed={value === genre.id}
+            onClick={() => onChange(genre.id)}
+          >
+            <span>{genre.label}</span>
+            <small>{hasTrack ? 'Sample available' : 'Coming soon'}</small>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 type SignupResult = { success?: boolean; alreadyJoined?: boolean; serviceAreaStatus?: 'in_area' | 'outside_area' | 'unknown'; referralCode?: string; memberAccessToken?: string; error?: string };
 type RestoreMemberResult = { success?: boolean; memberToken?: string; referralCode?: string; error?: string };
@@ -447,6 +491,7 @@ export default function Home() {
   const enterSite = () => {
     if (!selectedAgeGroup || !adultConfirmedAtEntry) return;
     recordAnalytics('age_group_selected', ageGroup);
+    if (!musicGenre) recordAnalytics('music_genre_selected', ageGroup);
     setAgeGateComplete(true);
     setMusicNotice('');
     if (currentTrack && audioRef.current) {
@@ -470,6 +515,7 @@ export default function Home() {
 
   const changeMusicGenre = (genre: string) => {
     setMusicGenre(genre);
+    recordAnalytics('music_genre_selected', ageGroup || undefined, undefined, genre || undefined);
     if (!ageGateComplete) return;
     const track = genre ? siteContent.genre_tracks[genre] : siteContent.age_group_tracks[ageGroup];
     const audio = audioRef.current;
@@ -725,11 +771,19 @@ export default function Home() {
           <h1>First, are you <em>18+?</em></h1>
           <p>This experience is for adults of legal drinking age. Choose an age range and the music you love; we do not ask for your date of birth. Your range is only saved if you join the waitlist.</p>
           <label className="age-gate-select">Your age range<select value={ageGroup} onChange={event => setAgeGroup(event.target.value)}><option value="">Choose an adult age range</option>{ageGroups.map(group => <option key={group.id} value={group.id}>{group.label}</option>)}</select></label>
-          <label className="age-gate-select">Your music style<select value={musicGenre} onChange={event => changeMusicGenre(event.target.value)}><option value="">Play my age-group mix</option>{musicGenres.map(genre => <option key={genre.id} value={genre.id} disabled={!siteContent.genre_tracks[genre.id]}>{genre.label}{siteContent.genre_tracks[genre.id] ? '' : ' · no song yet'}</option>)}</select></label>
-          <p className="inline-note">Skip choosing a style and we’ll automatically play the song uploaded for your age group when you tap “Enter &amp; play”.</p>
-          {Object.keys(siteContent.genre_tracks).length === 0 && <p className="inline-note">Pick your age range for now. Genre tracks are coming soon.</p>}
+          <fieldset className="music-style-fieldset">
+            <legend>Pick the sound you love</legend>
+            <p>Tap a style to choose it. Your pick helps us learn what music our community wants.</p>
+            <MusicStylePicker
+              value={musicGenre}
+              tracks={siteContent.genre_tracks}
+              ageTrackAvailable={Boolean(siteContent.age_group_tracks[ageGroup])}
+              onChange={changeMusicGenre}
+            />
+          </fieldset>
+          <p className="inline-note">A style is still selectable when its sample is coming soon, so your taste counts even before we upload a track. Choose “My age-group mix” to hear the song uploaded for your range.</p>
           <label className="check-row age-row"><input type="checkbox" checked={adultConfirmedAtEntry} onChange={event => setAdultConfirmedAtEntry(event.target.checked)} /><span>I confirm I am 18 or older.</span></label>
-          <p className="privacy-note">Music starts softly after you continue, then gradually gets louder. You can pause it anytime. We count anonymous site opens and age-group track listens to learn what resonates; activity is not linked to signup details. The area heat map uses only the neighbourhood members choose to share when joining.</p>
+          <p className="privacy-note">Music starts softly after you continue, then gradually gets louder. You can pause it anytime. We count anonymous site visits, age-range selections, music-style picks and listening activity to learn what resonates; this activity is not linked to signup details. The area heat map uses only the neighbourhood members choose to share when joining.</p>
           {siteContentLoadError && <div className="error" role="alert">
             <p>{siteContentLoadError}</p>
             <button type="button" disabled={refreshingTracks} onClick={() => { setRefreshingTracks(true); void loadPublishedContent(); }}>
@@ -766,16 +820,20 @@ export default function Home() {
       )}
       {ageGateComplete && (
         <div className="music-control">
-          <label className="music-genre-control">Music style
-            <select aria-label="Choose music style" value={musicGenre} onChange={event => changeMusicGenre(event.target.value)}>
-              <option value="">My age-group mix</option>
-              {musicGenres.map(genre => <option key={genre.id} value={genre.id} disabled={!siteContent.genre_tracks[genre.id]}>{genre.label}{siteContent.genre_tracks[genre.id] ? '' : ' · no song yet'}</option>)}
-            </select>
-          </label>
-          <span>{currentTrack ? `Now playing: ${currentTrack.title}` : 'Music not set for this choice'}</span>
-          <button type="button" disabled={refreshingTracks} onClick={() => { setRefreshingTracks(true); void loadPublishedContent(); }}>{refreshingTracks ? 'Checking for new songs…' : 'Check for new songs'}</button>
-          {currentTrack && <button type="button" onClick={toggleMusic}>{musicPlaying ? 'Pause music' : 'Play music'}</button>}
-          {musicNotice && <span role="status">{musicNotice}</span>}
+          <p className="music-control-title">Choose your music style</p>
+          <MusicStylePicker
+            compact
+            value={musicGenre}
+            tracks={siteContent.genre_tracks}
+            ageTrackAvailable={Boolean(siteContent.age_group_tracks[ageGroup])}
+            onChange={changeMusicGenre}
+          />
+          <div className="music-control-actions">
+            <span>{currentTrack ? `Now playing: ${currentTrack.title}` : musicGenre ? 'Your style is saved for future tracks' : 'No song is assigned to this choice yet'}</span>
+            <button type="button" disabled={refreshingTracks} onClick={() => { setRefreshingTracks(true); void loadPublishedContent(); }}>{refreshingTracks ? 'Checking for new songs…' : 'Check for new songs'}</button>
+            {currentTrack && <button type="button" onClick={toggleMusic}>{musicPlaying ? 'Pause music' : 'Play music'}</button>}
+            {musicNotice && <span role="status">{musicNotice}</span>}
+          </div>
         </div>
       )}
       {ageGateComplete && <>
