@@ -737,7 +737,7 @@ export default function Home() {
             </button>
           </div>}
           <button className="button button-primary" disabled={!siteContentLoaded || Boolean(siteContentLoadError) || !ageGroup || !adultConfirmedAtEntry} onClick={enterSite}>{siteContentLoadError ? 'Waitlist temporarily unavailable' : siteContentLoaded ? `Enter ${siteContent.campaign_settings.brandName}` : 'Loading…'} {!siteContentLoadError && <span>↗</span>}</button>
-          {!restoringMember && savedMemberProfile && <aside className="returning-member-card">
+          {!restoringMember && savedMemberProfile && <aside className="returning-member-card ph-no-capture">
             <p className="eyebrow"><span /> WELCOME BACK{savedMemberProfile.fullName ? `, ${savedMemberProfile.fullName.split(' ')[0].toUpperCase()}` : ''}</p>
             <p>You’re already on the waitlist. Your details have been restored on this device — there’s no need to sign up again.</p>
             <Link className="button button-outline" href={widgetUrl}>Continue to my waitlist dashboard <span>↗</span></Link>
@@ -898,7 +898,7 @@ export default function Home() {
       )}
 
       {step === 3 && (
-        <section className="success-card">
+        <section className="success-card ph-no-capture">
           <div className="success-icon">✦</div><p className="eyebrow">YOU’RE ON THE LIST</p><h1>You’re in.<br /><em>Cheers.</em></h1>
           <p className="success-copy">{serviceAreaStatus === 'in_area'
             ? `Good news — ${resolvedArea}, ${resolvedCity} is in our current launch coverage. We’re getting ready to serve your area, so stay on the list and watch for your launch and early-access update.`

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { PwaInstallProvider } from './pwa-install-provider';
+import SessionReplay, { SessionReplayConsent } from './session-replay';
 
 export const metadata: Metadata = {
   title: 'Midnight Society KE | Your invitation starts here',
@@ -27,7 +28,13 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
-      <body><PwaInstallProvider>{children}</PwaInstallProvider></body>
+      <body>
+        <PwaInstallProvider>
+          {children}
+          <SessionReplay appName="Waitlist" />
+          <SessionReplayConsent />
+        </PwaInstallProvider>
+      </body>
     </html>
   );
 }
