@@ -44,26 +44,26 @@ export default function WaitlistWidgetPage() {
   const [isAndroid, setIsAndroid] = useState(false);
   const { installPromptAvailable, isInstalled, install: promptInstall } = usePwaInstall();
 
-  const refresh = useCallback(async (accessToken: string) => {
-    const [memberResponse, contentResponse] = await Promise.all([
-      fetch('/api/member', { cache: 'no-store', headers: { Authorization: `Bearer ${accessToken}` } }),
-      fetch('/api/content', { cache: 'no-store' })
-    ]);
-    const memberData = await memberResponse.json() as Progress & { error?: string };
-    const contentData = await contentResponse.json() as { content?: Content; rewards?: Reward[]; error?: string };
-    if (!memberResponse.ok) throw new Error(memberData.error || 'Your referral progress could not be loaded.');
-    setProgress(memberData);
-    if (!contentResponse.ok || !contentData.content) {
-      console.error('[WaitlistWidget] Launch and souvenir content is unavailable:', contentData.error);
-      setContent(defaultContent);
-      setRewards([]);
+  const refreshContent = useCallback(async () => {
+    const response = await fetch('/api/content', { cache: 'no-store' });
+    const data = await response.json() as { content?: Content; rewards?: Reward[]; error?: string };
+    if (!response.ok || !data.content) {
+      console.error('[WaitlistWidget] Launch and souvenir content is unavailable:', data.error);
       setContentWarning('Your referrals and tokens are available. Launch countdown and souvenirs are temporarily unavailable.');
       return;
     }
-    setContent(contentData.content);
-    setRewards(contentData.rewards || []);
+    setContent(data.content);
+    setRewards(data.rewards || []);
     setContentWarning('');
   }, []);
+
+  const refresh = useCallback(async (accessToken: string) => {
+    const memberResponse = await fetch('/api/member', { cache: 'no-store', headers: { Authorization: `Bearer ${accessToken}` } });
+    const memberData = await memberResponse.json() as Progress & { error?: string };
+    if (!memberResponse.ok) throw new Error(memberData.error || 'Your referral progress could not be loaded.');
+    setProgress(memberData);
+    await refreshContent();
+  }, [refreshContent]);
 
   useEffect(() => {
     const savedToken = window.localStorage.getItem('waitlist-member-token') || '';
@@ -77,6 +77,17 @@ export default function WaitlistWidgetPage() {
     }
     setNow(Date.now());
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    const refreshPublishedContent = () => {
+      if (document.visibilityState === 'visible') {
+        void refreshContent().catch(cause => {
+          console.error('[WaitlistWidget] Could not refresh published campaign content:', cause);
+          setContentWarning('Launch countdown and souvenirs could not be refreshed. Check your connection and reopen the dashboard.');
+        });
+      }
+    };
+    const contentTimer = window.setInterval(refreshPublishedContent, 30_000);
+    window.addEventListener('focus', refreshPublishedContent);
+    document.addEventListener('visibilitychange', refreshPublishedContent);
     if (savedToken) {
       void refresh(savedToken)
         .catch(cause => setError(cause instanceof Error ? cause.message : 'Your dashboard could not be loaded.'))
@@ -84,10 +95,14 @@ export default function WaitlistWidgetPage() {
     } else {
       setLoading(false);
     }
+    refreshPublishedContent();
     return () => {
       window.clearInterval(timer);
+      window.clearInterval(contentTimer);
+      window.removeEventListener('focus', refreshPublishedContent);
+      document.removeEventListener('visibilitychange', refreshPublishedContent);
     };
-  }, [refresh]);
+  }, [refresh, refreshContent]);
 
   const shareUrl = useMemo(() => {
     if (typeof window === 'undefined' || !progress?.referralCode) return '';
@@ -215,7 +230,7 @@ export default function WaitlistWidgetPage() {
       <section className="widget-countdown">
         <p className="eyebrow"><span /> THE LAUNCH IS GETTING CLOSER</p>
         <h1>{countdown(content.launch_at, now)}</h1>
-        <p>Your countdown refreshes live while this dashboard is open.</p>
+        <p>The timer updates live. Published launch-date changes refresh automatically while this dashboard is open.</p>
       </section>
       <section className="widget-stats" aria-label="Your referral progress">
         <article><span>DOWNLINE REFERRALS</span><b>{progress.referralsJoined}</b></article>
