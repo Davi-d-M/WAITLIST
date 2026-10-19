@@ -108,6 +108,8 @@ h1 em,.success-card h1 em{font-family:Georgia,"Times New Roman",serif;color:var(
 .halloween-invite h2{margin:0;color:var(--ink);font-size:clamp(19px,2.4vw,25px);letter-spacing:-.045em}
 .halloween-invite div>p:last-child{margin:7px 0 0;color:var(--muted);font-size:11px;line-height:1.65}
 .halloween-invite-success{width:min(100%,600px);margin:24px auto;padding:18px;text-align:left}
+.market-seller-invite{border-left-color:#583868;background:linear-gradient(120deg,#f4edf7 0%,#fff 100%)}
+.market-seller-invite .button{margin-top:14px}
 .reward-preview{max-width:1100px;margin:0 auto 72px}.reward-preview h2,.widget-claims h2{font-size:clamp(24px,4vw,38px);letter-spacing:-.05em;margin:0}.reward-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-top:20px}.reward-card{display:flex;flex-direction:column;align-items:flex-start;gap:10px;background:#fff;border:1px solid var(--line);padding:14px;min-height:100%}.reward-card img{width:100%;height:150px;object-fit:cover;background:#f2eee8}.reward-card b{font-size:15px}.reward-card p{margin:0;color:var(--muted);font-size:12px;line-height:1.65}.reward-card>span{margin-top:auto;color:var(--primary);font-size:9px;font-weight:800;letter-spacing:.1em}.reward-card .button{margin-top:7px;width:100%;font-size:9px;padding:0 10px;gap:8px}
 .member-progress{display:flex;flex-wrap:wrap;justify-content:center;gap:12px;margin-top:26px}.member-progress span,.member-progress b{padding:13px 17px;background:#fff;color:var(--muted);font-size:9px;letter-spacing:.12em}.member-progress b{color:var(--primary)}
 .dashboard-link{margin-top:12px;text-decoration:none}.success-card .dashboard-link{margin-top:12px}

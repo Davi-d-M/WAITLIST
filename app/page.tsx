@@ -750,6 +750,18 @@ export default function Home() {
   const countdown = countdownParts(siteContent.launch_at, now);
   const shareLabel = getShareLabel(ageGroup);
   const widgetUrl = '/widget';
+  const marketSellerUrl = (() => {
+    try {
+      const configured = new URL(process.env.NEXT_PUBLIC_MIDNIGHT_MARKET_URL || '');
+      if (!['http:', 'https:'].includes(configured.protocol)) return null;
+      configured.pathname = '/merchant/register';
+      configured.search = '';
+      configured.hash = '';
+      return configured.toString();
+    } catch {
+      return null;
+    }
+  })();
 
   return (
     <main className="site-shell">
@@ -861,6 +873,15 @@ export default function Home() {
               <div><b>Keep the countdown on your phone.</b><p>Join the list, then add your personal countdown and referral dashboard to your home screen.</p></div>
               <button className="button button-outline" type="button" onClick={() => setStep(1)}>Join &amp; get my countdown <span>↗</span></button>
             </aside>
+            {marketSellerUrl && <aside className="halloween-invite market-seller-invite" aria-label="Halloween merchandise seller applications">
+              <span className="halloween-invite-icon" aria-hidden="true">✦</span>
+              <div>
+                <p className="halloween-invite-eyebrow">MIDNIGHT MARKET · MERCHANTS</p>
+                <h2>Bring your Halloween collection to the marketplace.</h2>
+                <p>Apply to list outfits, jewellery, masks, makeup and accessories. Every merchant and listing is reviewed before it goes live.</p>
+                <a className="button button-primary" href={marketSellerUrl} target="_blank" rel="noreferrer">Apply to sell <span>↗</span></a>
+              </div>
+            </aside>}
             <p className="inline-note">Join early to see the real souvenirs you can earn. Every new signup in your referral chain earns you 3 tokens toward available rewards.</p>
             <div className="benefits">{[siteContent.benefit_one, siteContent.benefit_two, siteContent.benefit_three].map(benefit => <span key={benefit}>✦ {benefit}</span>)}</div>
           </div>
