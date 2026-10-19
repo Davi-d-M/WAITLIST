@@ -750,22 +750,21 @@ export default function Home() {
   const countdown = countdownParts(siteContent.launch_at, now);
   const shareLabel = getShareLabel(ageGroup);
   const widgetUrl = '/widget';
-  const marketSellerUrl = (() => {
+  const marketBaseUrl = (() => {
     try {
       const configured = new URL(process.env.NEXT_PUBLIC_MIDNIGHT_MARKET_URL || '');
       if (!['http:', 'https:'].includes(configured.protocol)) return null;
-      configured.pathname = '/merchant/register';
-      configured.search = '';
-      configured.hash = '';
-      return configured.toString();
+      return configured.origin;
     } catch {
       return null;
     }
   })();
+  const marketShopUrl = marketBaseUrl ? `${marketBaseUrl}/shop` : null;
+  const marketSellerUrl = marketBaseUrl ? `${marketBaseUrl}/merchant/register` : null;
 
   return (
     <main className="site-shell">
-      <nav className="topbar"><Link className="brand" href="/" aria-label={`${siteContent.campaign_settings.brandName} home`}><span className="brand-mark">✦</span><span>{siteContent.campaign_settings.brandName}<span className="brand-sub">{siteContent.campaign_settings.brandDescriptor}</span></span></Link><span className="top-status"><i /> {campaignPhases[siteContent.campaign_settings.phase]}</span></nav>
+      <nav className="topbar"><Link className="brand" href="/" aria-label={`${siteContent.campaign_settings.brandName} home`}><span className="brand-mark">✦</span><span>{siteContent.campaign_settings.brandName}<span className="brand-sub">{siteContent.campaign_settings.brandDescriptor}</span></span></Link>{marketShopUrl && <Link className="market-top-link" href="/shop">Shop the Halloween edit <span>↗</span></Link>}<span className="top-status"><i /> {campaignPhases[siteContent.campaign_settings.phase]}</span></nav>
       <audio ref={audioRef} loop preload="none" onTimeUpdate={event => {
         const audio = event.currentTarget;
         if (!musicQualifiedRef.current && currentTrack && audio.duration > 0 && audio.currentTime / audio.duration >= 0.8) {
@@ -868,6 +867,15 @@ export default function Home() {
             </aside>
             <button className="button button-primary" onClick={() => setStep(1)}>{siteContent.campaign_settings.ctaLabel} <span>↗</span></button>
             {countdown && <div className="countdown-strip"><b>{countdown.launched ? 'WE ARE LIVE' : 'LAUNCH COUNTDOWN'}</b><span>{countdown.launched ? 'The wait is over.' : `${countdown.days}d ${countdown.hours}h ${countdown.minutes}m ${countdown.seconds}s`}</span></div>}
+            {marketShopUrl && <aside className="halloween-invite market-shop-invite" aria-label="Shop approved Halloween merchandise">
+              <span className="halloween-invite-icon" aria-hidden="true">✦</span>
+              <div>
+                <p className="halloween-invite-eyebrow">MIDNIGHT MARKET · SHOP</p>
+                <h2>Find your look for the night.</h2>
+                <p>Search approved Halloween collections by category, explore local boutiques and send an order request for items available now.</p>
+                <Link className="button button-primary" href="/shop">Explore the shop <span>↗</span></Link>
+              </div>
+            </aside>}
             <aside className="countdown-nudge">
               <span className="countdown-nudge-icon" aria-hidden="true">⌂</span>
               <div><b>Keep the countdown on your phone.</b><p>Join the list, then add your personal countdown and referral dashboard to your home screen.</p></div>
@@ -995,6 +1003,15 @@ export default function Home() {
               {siteContent.campaign_settings.registrationUrl && <a className="button button-outline event-registration-link" href={siteContent.campaign_settings.registrationUrl} target="_blank" rel="noreferrer">{siteContent.campaign_settings.registrationLabel} <span>↗</span></a>}
             </div>
           </aside>
+          {marketShopUrl && <aside className="halloween-invite halloween-invite-success market-shop-invite" aria-label="Browse approved Halloween merchandise">
+            <span className="halloween-invite-icon" aria-hidden="true">✦</span>
+            <div>
+              <p className="halloween-invite-eyebrow">MIDNIGHT MARKET · SHOP</p>
+              <h2>Ready to find your Halloween look?</h2>
+              <p>Browse approved collections, search categories and explore independent boutiques.</p>
+              <Link className="button button-primary" href="/shop">Explore the shop <span>↗</span></Link>
+            </div>
+          </aside>}
           {referralCode && <p className="referral">YOUR INVITE CODE <b>{referralCode}</b></p>}
           {rewardPath && <p className="inline-note">Your experience: {siteContent.campaign_settings.experiences.find(path => path.id === rewardPath)?.title}</p>}
           <p className="success-copy">Your unique link tracks your referral chain. Each new signup in your downline earns you 3 tokens to put toward the souvenirs shown on the site.</p>
