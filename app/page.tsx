@@ -764,7 +764,7 @@ export default function Home() {
 
   return (
     <main className="site-shell">
-      <nav className="topbar"><Link className="brand" href="/" aria-label={`${siteContent.campaign_settings.brandName} home`}><span className="brand-mark">✦</span><span>{siteContent.campaign_settings.brandName}<span className="brand-sub">{siteContent.campaign_settings.brandDescriptor}</span></span></Link>{marketShopUrl && <Link className="market-top-link" href="/shop">Shop the Halloween edit <span>↗</span></Link>}<span className="top-status"><i /> {campaignPhases[siteContent.campaign_settings.phase]}</span></nav>
+      <nav className="topbar"><Link className="brand" href="/" aria-label={`${siteContent.campaign_settings.brandName} home`}><span className="brand-mark">✦</span><span>{siteContent.campaign_settings.brandName}<span className="brand-sub">{siteContent.campaign_settings.brandDescriptor}</span></span></Link><Link className="market-top-link" href="/shop" aria-label="Shop Halloween wigs, costumes, outfits and accessories">Shop Halloween <span aria-hidden="true">↗</span></Link><span className="top-status"><i /> {campaignPhases[siteContent.campaign_settings.phase]}</span></nav>
       <audio ref={audioRef} loop preload="none" onTimeUpdate={event => {
         const audio = event.currentTarget;
         if (!musicQualifiedRef.current && currentTrack && audio.duration > 0 && audio.currentTime / audio.duration >= 0.8) {
@@ -871,7 +871,7 @@ export default function Home() {
               <span className="halloween-invite-icon" aria-hidden="true">✦</span>
               <div>
                 <p className="halloween-invite-eyebrow">MIDNIGHT MARKET · SHOP</p>
-                <h2>Find your look for the night.</h2>
+                <h2>Wigs, costumes &amp; more for Halloween.</h2>
                 <p>Search approved Halloween collections by category, explore local boutiques and send an order request for items available now.</p>
                 <Link className="button button-primary" href="/shop">Explore the shop <span>↗</span></Link>
               </div>
