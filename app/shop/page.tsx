@@ -1,18 +1,12 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import { getMidnightMarketOrigin } from '../marketplace';
 
 export const dynamic = 'force-dynamic';
 
 export default function ShopRedirectPage() {
-  let destination: string | null = null;
-  try {
-    const configured = new URL(process.env.NEXT_PUBLIC_MIDNIGHT_MARKET_URL || '');
-    if (['http:', 'https:'].includes(configured.protocol) && !configured.username && !configured.password) {
-      destination = new URL('/shop', configured.origin).toString();
-    }
-  } catch {
-    destination = null;
-  }
+  const marketOrigin = getMidnightMarketOrigin(process.env.NEXT_PUBLIC_MIDNIGHT_MARKET_URL);
+  const destination = marketOrigin ? new URL('/shop', marketOrigin).toString() : null;
 
   if (destination) redirect(destination);
 

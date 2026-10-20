@@ -2,6 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
+import { getMidnightMarketOrigin } from './marketplace';
 
 const areasByCity: Record<string, { county: string; areas: string[] }> = {
   Nairobi: {
@@ -750,15 +751,7 @@ export default function Home() {
   const countdown = countdownParts(siteContent.launch_at, now);
   const shareLabel = getShareLabel(ageGroup);
   const widgetUrl = '/widget';
-  const marketBaseUrl = (() => {
-    try {
-      const configured = new URL(process.env.NEXT_PUBLIC_MIDNIGHT_MARKET_URL || '');
-      if (!['http:', 'https:'].includes(configured.protocol)) return null;
-      return configured.origin;
-    } catch {
-      return null;
-    }
-  })();
+  const marketBaseUrl = getMidnightMarketOrigin(process.env.NEXT_PUBLIC_MIDNIGHT_MARKET_URL);
   const marketShopUrl = marketBaseUrl ? `${marketBaseUrl}/shop` : null;
   const marketSellerUrl = marketBaseUrl ? `${marketBaseUrl}/merchant/register` : null;
 
