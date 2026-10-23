@@ -14,15 +14,15 @@ export default function ShopRedirectPage() {
     <main className="site-shell">
       <nav className="topbar">
         <Link className="brand" href="/" aria-label="Midnight Society home">
-          <span className="brand-mark">✦</span>
-          <span> MIDNIGHT SOCIETY <span className="brand-sub">KENYA · AFTER DARK</span></span>
+          <span className="brand-mark">MS</span>
+          <span>MIDNIGHT SOCIETY <span className="brand-sub">KENYA | AFTER DARK</span></span>
         </Link>
       </nav>
       <section className="market-shop-unavailable">
         <p className="eyebrow">MIDNIGHT MARKET</p>
         <h1>The shop is getting ready.</h1>
         <p>The customer storefront is not connected to this deployment yet. Please check back soon.</p>
-        <Link className="button button-primary" href="/">Back to Midnight Society <span>↗</span></Link>
+        <Link className="button button-primary" href="/">Back to Midnight Society</Link>
       </section>
     </main>
   );
