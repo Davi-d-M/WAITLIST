@@ -16,7 +16,7 @@ const areasByCity: Record<string, { county: string; areas: string[] }> = {
   Other: { county: '', areas: [] }
 };
 
-const interests = ['Spirits', 'Wine', 'Beer', 'Champagne', 'Cocktails', 'Mixers', 'Gift boxes', 'Snacks', 'Something else'];
+const interests = ['Spirits', 'Wine', 'Beer', 'Champagne', 'Cocktails', 'Mixers', 'Gift boxes', 'Snacks', 'Halloween costumes', 'Halloween accessories', 'Something else'];
 const frequencies = [
   ['weekly', 'Once a week'],
   ['few_monthly', 'A few times a month'],
@@ -752,12 +752,12 @@ export default function Home() {
   const shareLabel = getShareLabel(ageGroup);
   const widgetUrl = '/widget';
   const marketBaseUrl = getMidnightMarketOrigin(process.env.NEXT_PUBLIC_MIDNIGHT_MARKET_URL);
-  const marketShopUrl = marketBaseUrl ? `${marketBaseUrl}/shop` : null;
+  const marketShopUrl = marketBaseUrl ? `${marketBaseUrl}/halloween` : null;
   const marketSellerUrl = marketBaseUrl ? `${marketBaseUrl}/merchant/register` : null;
 
   return (
     <main className="site-shell">
-      <nav className="topbar"><Link className="brand" href="/" aria-label={`${siteContent.campaign_settings.brandName} home`}><span className="brand-mark">✦</span><span>{siteContent.campaign_settings.brandName}<span className="brand-sub">{siteContent.campaign_settings.brandDescriptor}</span></span></Link><Link className="market-top-link" href="/shop" aria-label="Shop Halloween wigs, costumes, outfits and accessories">Shop Halloween <span aria-hidden="true">↗</span></Link><span className="top-status"><i /> {campaignPhases[siteContent.campaign_settings.phase]}</span></nav>
+      <nav className="topbar"><Link className="brand" href="/" aria-label={`${siteContent.campaign_settings.brandName} home`}><span className="brand-mark">✦</span><span>{siteContent.campaign_settings.brandName}<span className="brand-sub">{siteContent.campaign_settings.brandDescriptor}</span></span></Link><Link className="market-top-link" href="/halloween" aria-label="Shop Halloween wigs, costumes, outfits and accessories">Shop Halloween <span aria-hidden="true">↗</span></Link><span className="top-status"><i /> {campaignPhases[siteContent.campaign_settings.phase]}</span></nav>
       <audio ref={audioRef} loop preload="none" onTimeUpdate={event => {
         const audio = event.currentTarget;
         if (!musicQualifiedRef.current && currentTrack && audio.duration > 0 && audio.currentTime / audio.duration >= 0.8) {
@@ -865,8 +865,8 @@ export default function Home() {
               <div>
                 <p className="halloween-invite-eyebrow">MIDNIGHT MARKET · SHOP</p>
                 <h2>Wigs, costumes &amp; more for Halloween.</h2>
-                <p>Search approved Halloween collections by category, explore local boutiques and send an order request for items available now.</p>
-                <Link className="button button-primary" href="/shop">Explore the shop <span>↗</span></Link>
+                <p>Browse the Halloween costume collection, compare styles and sizes, and check current marketplace availability.</p>
+                <Link className="button button-primary" href="/halloween">Explore the shop <span>↗</span></Link>
               </div>
             </aside>}
             <aside className="countdown-nudge">
@@ -996,13 +996,13 @@ export default function Home() {
               {siteContent.campaign_settings.registrationUrl && <a className="button button-outline event-registration-link" href={siteContent.campaign_settings.registrationUrl} target="_blank" rel="noreferrer">{siteContent.campaign_settings.registrationLabel} <span>↗</span></a>}
             </div>
           </aside>
-          {marketShopUrl && <aside className="halloween-invite halloween-invite-success market-shop-invite" aria-label="Browse approved Halloween merchandise">
+          {marketShopUrl && <aside className="halloween-invite halloween-invite-success market-shop-invite" aria-label="Browse Halloween costumes">
             <span className="halloween-invite-icon" aria-hidden="true">✦</span>
             <div>
               <p className="halloween-invite-eyebrow">MIDNIGHT MARKET · SHOP</p>
               <h2>Ready to find your Halloween look?</h2>
-              <p>Browse approved collections, search categories and explore independent boutiques.</p>
-              <Link className="button button-primary" href="/shop">Explore the shop <span>↗</span></Link>
+              <p>Browse costume styles and sizes in the Halloween storefront.</p>
+              <Link className="button button-primary" href="/halloween">Explore the shop <span>↗</span></Link>
             </div>
           </aside>}
           {referralCode && <p className="referral">YOUR INVITE CODE <b>{referralCode}</b></p>}

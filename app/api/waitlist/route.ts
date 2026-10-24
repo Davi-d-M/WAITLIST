@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 
 const allowedInterests = new Set([
   'Spirits', 'Wine', 'Beer', 'Champagne', 'Cocktails', 'Mixers',
-  'Gift boxes', 'Snacks', 'Something else'
+  'Gift boxes', 'Snacks', 'Halloween costumes', 'Halloween accessories', 'Something else'
 ]);
 const areas = [
   { country: 'Kenya', county: 'Nairobi', city: 'Nairobi', area: 'CBD', latitude: -1.2864, longitude: 36.8172 },
@@ -212,7 +212,7 @@ export async function POST(request: Request) {
   const whatsappConsent = body.whatsappConsent === true;
   const contactMethod = text(body.preferredContactMethod, 20);
   const interests = Array.isArray(body.productInterests)
-    ? body.productInterests.filter((value): value is string => typeof value === 'string' && allowedInterests.has(value)).slice(0, 9)
+    ? body.productInterests.filter((value): value is string => typeof value === 'string' && allowedInterests.has(value)).slice(0, allowedInterests.size)
     : [];
   const validRewardPaths = new Set(['wine', 'adventure', 'music']);
   const rewardPath = text(body.rewardPath, 20);
