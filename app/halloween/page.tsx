@@ -8,6 +8,18 @@ type CatalogResponse = {
   products: CatalogProduct[];
   categories: ShopCategory[];
   campaign?: { title: string; message: string } | null;
+  storefront?: {
+    eyebrow: string;
+    title: string;
+    subtitle: string;
+    collectionEyebrow: string;
+    collectionTitle: string;
+    searchPlaceholder: string;
+    categoriesLabel: string;
+    countdownLabel: string;
+    countdownEndsAt: string | null;
+    showPreviewDesigns: boolean;
+  } | null;
   error?: string;
 };
 
@@ -49,6 +61,7 @@ export default async function HalloweenShopPage() {
         products={catalog.products}
         categories={catalog.categories}
         campaign={catalog.campaign}
+        storefront={catalog.storefront}
         origin={origin}
         catalogError={catalogError}
       />

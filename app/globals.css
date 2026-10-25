@@ -59,7 +59,7 @@ button{cursor:pointer}
 .halloween-drop-copy,.halloween-drop-actions,.halloween-theme-row,.halloween-search,.halloween-shortcuts{position:relative;z-index:1}
 .halloween-drop-copy{max-width:710px}
 .halloween-drop-label{color:#e7b6ff;font-size:10px;font-weight:900;letter-spacing:.22em}
-.halloween-drop-copy h1{margin:16px 0 14px;font-size:clamp(34px,6.3vw,74px);line-height:.98;letter-spacing:-.055em}
+.halloween-drop-copy h1{margin:16px 0 14px;font-size:clamp(34px,6.3vw,74px);line-height:.98;letter-spacing:-.055em;white-space:pre-line}
 .halloween-drop-copy h1 em{color:#f5a7ff;font-family:Georgia,serif;font-weight:500}
 .halloween-drop-copy p{max-width:550px;margin:0;color:#d4c8dd;font-size:14px;line-height:1.75}
 .halloween-drop-actions{display:flex;flex-wrap:wrap;gap:9px;margin:25px 0 28px}

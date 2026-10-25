@@ -5,6 +5,31 @@ import { useEffect, useMemo, useState } from 'react';
 
 export type ShopCategory = { name: string; slug: string; description: string | null };
 export type ShopCampaign = { title: string; message: string };
+export type ShopStorefront = {
+  eyebrow: string;
+  title: string;
+  subtitle: string;
+  collectionEyebrow: string;
+  collectionTitle: string;
+  searchPlaceholder: string;
+  categoriesLabel: string;
+  countdownLabel: string;
+  countdownEndsAt: string | null;
+  showPreviewDesigns: boolean;
+};
+
+const defaultStorefront: ShopStorefront = {
+  eyebrow: 'HALLOWEEN DROP',
+  title: 'COSTUME STORE FOR THE SEASON',
+  subtitle: 'Browse costume drops, explore fit and photo previews, and discover real merchant listings when they’re published.',
+  collectionEyebrow: 'THE COLLECTION',
+  collectionTitle: 'Find your look.',
+  searchPlaceholder: 'Search costumes, styles, and descriptions',
+  categoriesLabel: 'SHOP LIVE CATEGORIES',
+  countdownLabel: 'HALLOWEEN COUNTDOWN',
+  countdownEndsAt: null,
+  showPreviewDesigns: true
+};
 
 export type CatalogProduct = {
   id: string;
@@ -129,15 +154,18 @@ export default function HalloweenCatalog({
   products,
   categories,
   campaign,
+  storefront: storefrontSettings,
   origin,
   catalogError
 }: {
   products: CatalogProduct[];
   categories: ShopCategory[];
   campaign?: ShopCampaign | null;
+  storefront?: ShopStorefront | null;
   origin: string;
   catalogError?: string;
 }) {
+  const storefront = storefrontSettings || defaultStorefront;
   const [query, setQuery] = useState('');
   const [theme, setTheme] = useState('All');
   const [sizes, setSizes] = useState<Record<string, string>>({});
@@ -165,9 +193,12 @@ export default function HalloweenCatalog({
   const costumes = useMemo(() => {
     const marketplaceProducts = products.map(mapProduct);
     const unique = new Map<string, Costume>();
-    for (const product of [...previewCostumes, ...marketplaceProducts]) unique.set(product.id, product);
+    for (const product of [...(storefront.showPreviewDesigns ? previewCostumes : []), ...marketplaceProducts]) unique.set(product.id, product);
     return [...unique.values()];
-  }, [products]);
+  }, [products, storefront.showPreviewDesigns]);
+  useEffect(() => {
+    setCart(current => current.filter(line => costumes.some(product => product.id === line.productId)));
+  }, [costumes]);
   const filtered = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase();
     return costumes.filter(product =>
@@ -234,14 +265,14 @@ export default function HalloweenCatalog({
     <section className="halloween-experience" aria-label="Halloween costume store">
       <header className="halloween-drop-hero">
         <div className="halloween-drop-copy">
-          <span className="halloween-drop-label">✦ HALLOWEEN DROP</span>
-          <h1>COSTUME STORE FOR<br /><em>THE SEASON</em></h1>
-          <p>Browse costume drops, explore fit and photo previews, and discover real merchant listings when they’re published.</p>
+          <span className="halloween-drop-label">✦ {storefront.eyebrow}</span>
+          <h1>{storefront.title}</h1>
+          <p>{storefront.subtitle}</p>
         </div>
         <div className="halloween-drop-actions">
           <a href={`${origin}/shop`} className="halloween-pill halloween-pill-light">FULL STORE <span>→</span></a>
           <a href={`${origin}/merchant/portal/login`} className="halloween-pill">MERCHANT PORTAL</a>
-          <span className="halloween-pill halloween-countdown">◇ 7-DAY COUNTDOWN</span>
+          {storefront.countdownEndsAt && <CountdownPill label={storefront.countdownLabel} endsAt={storefront.countdownEndsAt} />}
         </div>
         <div className="halloween-theme-row" role="group" aria-label="Filter costumes by theme">
           {themes.map(item => (
@@ -250,7 +281,7 @@ export default function HalloweenCatalog({
         </div>
         <label className="halloween-search">
           <span className="sr-only">Search costumes</span>
-          <input value={query} onChange={event => setQuery(event.target.value)} type="search" placeholder="Search costumes, styles, and descriptions" />
+          <input value={query} onChange={event => setQuery(event.target.value)} type="search" placeholder={storefront.searchPlaceholder} />
         </label>
         <div className="halloween-shortcuts">
           <button type="button" onClick={showFitQuiz}><span>♧ SIZE GUIDE</span><strong>FIND YOUR FIT</strong></button>
@@ -266,20 +297,20 @@ export default function HalloweenCatalog({
         </aside>
       )}
 
-      <div className="halloween-demo-note" role="note">
+      {storefront.showPreviewDesigns && <div className="halloween-demo-note" role="note">
         <strong>Costume previews are for browsing only.</strong> Preview designs and bag selections are not confirmed merchant inventory or an online order. Live listings below come from approved Halloween merchants; ask the seller to confirm stock, price and delivery before paying.
-        {catalogError && <span className="halloween-catalog-status"> Live merchant listings are temporarily unavailable: {catalogError}</span>}
-      </div>
+      </div>}
+      {catalogError && <div className="halloween-demo-note" role="alert"><strong>Merchant catalog connection issue.</strong><span className="halloween-catalog-status"> {catalogError}</span></div>}
 
       {categories.length > 0 && (
         <div className="halloween-live-categories" aria-label="Live merchant categories">
-          <span>SHOP LIVE CATEGORIES</span>
+          <span>{storefront.categoriesLabel}</span>
           {categories.slice(0, 8).map(category => <button key={category.slug} type="button" onClick={() => { setTheme(category.name); setQuery(''); }}>{category.name}</button>)}
         </div>
       )}
 
       <div className="halloween-grid-heading">
-        <div><span>THE COLLECTION</span><h2>Find your look.</h2></div>
+        <div><span>{storefront.collectionEyebrow}</span><h2>{storefront.collectionTitle}</h2></div>
         <p>{filtered.length} {filtered.length === 1 ? 'style' : 'styles'} · {products.length} live merchant {products.length === 1 ? 'listing' : 'listings'}</p>
       </div>
       {filtered.length ? (
@@ -385,4 +416,30 @@ function dialogTitle(dialog: Dialog, costume: Costume | null) {
   if (dialog === 'bag') return 'YOUR SHOPPING BAG';
   if (dialog === 'preview') return costume?.name || 'COSTUME PREVIEW';
   return 'HALLOWEEN COSTUMES';
+}
+
+function CountdownPill({ label, endsAt }: { label: string; endsAt: string }) {
+  const [remaining, setRemaining] = useState<number | null>(null);
+
+  useEffect(() => {
+    const target = new Date(endsAt).getTime();
+    const update = () => setRemaining(Number.isFinite(target) ? Math.max(0, target - Date.now()) : 0);
+    update();
+    const interval = window.setInterval(update, 1000);
+    return () => window.clearInterval(interval);
+  }, [endsAt]);
+
+  if (remaining === null) return <span className="halloween-pill halloween-countdown">◇ {label}</span>;
+  if (remaining === 0) return <span className="halloween-pill halloween-countdown">◇ {label} · ENDED</span>;
+
+  const totalSeconds = Math.floor(remaining / 1000);
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  return (
+    <time className="halloween-pill halloween-countdown" dateTime={endsAt}>
+      ◇ {label} · {days}D {String(hours).padStart(2, '0')}H {String(minutes).padStart(2, '0')}M {String(seconds).padStart(2, '0')}S
+    </time>
+  );
 }
