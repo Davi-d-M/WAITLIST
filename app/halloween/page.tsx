@@ -7,6 +7,7 @@ export const dynamic = 'force-dynamic';
 type CatalogResponse = {
   products: CatalogProduct[];
   categories: ShopCategory[];
+  campaign?: { title: string; message: string } | null;
   error?: string;
 };
 
@@ -44,7 +45,13 @@ export default async function HalloweenShopPage() {
         </Link>
         <Link className="market-top-link" href="/">Join the list <span aria-hidden="true">→</span></Link>
       </nav>
-      <HalloweenCatalog products={catalog.products} categories={catalog.categories} origin={origin} catalogError={catalogError} />
+      <HalloweenCatalog
+        products={catalog.products}
+        categories={catalog.categories}
+        campaign={catalog.campaign}
+        origin={origin}
+        catalogError={catalogError}
+      />
       <footer className="halloween-shop-footer">
         <span>Midnight Market · Costumes from local merchants</span>
         <a href={`${origin}/merchant/register`}>Sell on Midnight Market</a>

@@ -81,6 +81,10 @@ button{cursor:pointer}
 .halloween-demo-note{margin:0 0 23px;padding:14px 16px;border:1px solid #bb8a42;background:#fff5df;color:#59401f;font-size:11px;line-height:1.65}
 .halloween-demo-note strong{font-weight:900}
 .halloween-catalog-status{display:block;margin-top:4px;color:#874a22}
+.halloween-market-campaign{display:grid;grid-template-columns:minmax(130px,.3fr) 1fr;gap:16px;align-items:center;margin:0 0 20px;padding:17px 20px;border:1px solid #4f2860;border-left:5px solid #a947bc;border-radius:5px;background:linear-gradient(110deg,#24112e,#382044);color:#fff}
+.halloween-market-campaign>span{color:#e0a2ec;font-size:9px;font-weight:900;letter-spacing:.16em}
+.halloween-market-campaign h2{margin:0 0 5px;font-size:clamp(17px,2.5vw,23px)}
+.halloween-market-campaign p{margin:0;color:#e0d3e6;font-size:11px;line-height:1.6}
 .halloween-live-categories{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 27px}
 .halloween-live-categories>span{margin-right:5px;color:#b7a9c2;font-size:9px;font-weight:900;letter-spacing:.13em}
 .halloween-live-categories button{padding:7px 10px;border:1px solid #dad2df;border-radius:20px;background:#fff;color:#473653;font-size:10px}
@@ -122,8 +126,8 @@ button{cursor:pointer}
 .halloween-size-row button{min-width:31px;height:26px;padding:0 6px;border:1px solid #ded6e2;border-radius:2px;background:#fff;color:#51445a;font-size:9px;font-weight:800}
 .halloween-size-row button[aria-pressed="true"]{border-color:#4f2761;background:#4f2761;color:#fff}
 .halloween-card-actions{display:grid;grid-template-columns:1fr 1fr;gap:7px}
-.halloween-card-actions button{min-height:35px;padding:6px;border:1px solid #52265f;background:#52265f;color:#fff;font-size:8px;font-weight:900;letter-spacing:.04em}
-.halloween-card-actions button+button{background:#fff;color:#52265f}
+.halloween-card-actions button,.halloween-card-actions a{display:flex;min-height:35px;align-items:center;justify-content:center;padding:6px;border:1px solid #52265f;background:#52265f;color:#fff;font-size:8px;font-weight:900;letter-spacing:.04em;text-align:center;text-decoration:none}
+.halloween-card-actions button+button,.halloween-card-actions a+button{background:#fff;color:#52265f}
 .halloween-card-actions button:hover{filter:brightness(1.12)}
 .halloween-seller-link{display:inline-block;margin-top:10px;color:#5d3370;font-size:10px;font-weight:800}
 .halloween-shop-empty{border-color:#d9cbdc;border-radius:8px;background:#fff;color:#26172c}
@@ -178,7 +182,7 @@ button{cursor:pointer}
 .halloween-bag-total{display:flex;justify-content:space-between;margin-top:14px;color:#e2d4e9;font-size:11px}
 .halloween-bag-total strong{color:#fff;font-size:16px}
 @media(max-width:900px){.halloween-experience .halloween-product-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:620px){.halloween-drop-hero{margin:16px 0 20px;padding:25px 17px}.halloween-drop-actions{gap:6px}.halloween-pill{min-height:34px;padding:0 9px;font-size:8px}.halloween-shortcuts{grid-template-columns:1fr}.halloween-shortcuts button{min-height:53px}.halloween-grid-heading{align-items:flex-start;flex-direction:column}.halloween-grid-heading>p{text-align:left}.halloween-experience .halloween-product-grid{grid-template-columns:1fr}.halloween-product-art{min-height:255px}.halloween-preview-layout{grid-template-columns:1fr}.halloween-preview-scene{min-height:280px}.halloween-dialog-backdrop{padding:8px}.halloween-quiz-fields{grid-template-columns:1fr 1fr}.halloween-dialog-body{padding:15px}}
+@media(max-width:620px){.halloween-drop-hero{margin:16px 0 20px;padding:25px 17px}.halloween-drop-actions{gap:6px}.halloween-pill{min-height:34px;padding:0 9px;font-size:8px}.halloween-shortcuts{grid-template-columns:1fr}.halloween-shortcuts button{min-height:53px}.halloween-market-campaign{grid-template-columns:1fr;gap:8px;padding:14px}.halloween-grid-heading{align-items:flex-start;flex-direction:column}.halloween-grid-heading>p{text-align:left}.halloween-experience .halloween-product-grid{grid-template-columns:1fr}.halloween-product-art{min-height:255px}.halloween-preview-layout{grid-template-columns:1fr}.halloween-preview-scene{min-height:280px}.halloween-dialog-backdrop{padding:8px}.halloween-quiz-fields{grid-template-columns:1fr 1fr}.halloween-dialog-body{padding:15px}}
 .music-style-choice:focus-visible{outline:3px solid color-mix(in srgb,var(--primary) 28%,transparent);outline-offset:2px}
 .music-style-choice.selected{border-color:var(--primary);background:var(--primary-soft);box-shadow:inset 0 0 0 1px var(--primary)}
 .music-style-choice span{font-size:12px;font-weight:800}

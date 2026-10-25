@@ -4,6 +4,7 @@ import Image from 'next/image';
 import { useEffect, useMemo, useState } from 'react';
 
 export type ShopCategory = { name: string; slug: string; description: string | null };
+export type ShopCampaign = { title: string; message: string };
 
 export type CatalogProduct = {
   id: string;
@@ -127,11 +128,13 @@ function readCart(): CartLine[] {
 export default function HalloweenCatalog({
   products,
   categories,
+  campaign,
   origin,
   catalogError
 }: {
   products: CatalogProduct[];
   categories: ShopCategory[];
+  campaign?: ShopCampaign | null;
   origin: string;
   catalogError?: string;
 }) {
@@ -237,7 +240,7 @@ export default function HalloweenCatalog({
         </div>
         <div className="halloween-drop-actions">
           <a href={`${origin}/shop`} className="halloween-pill halloween-pill-light">FULL STORE <span>→</span></a>
-          <a href={`${origin}/merchant/register`} className="halloween-pill">MERCHANT PORTAL</a>
+          <a href={`${origin}/merchant/portal/login`} className="halloween-pill">MERCHANT PORTAL</a>
           <span className="halloween-pill halloween-countdown">◇ 7-DAY COUNTDOWN</span>
         </div>
         <div className="halloween-theme-row" role="group" aria-label="Filter costumes by theme">
@@ -255,6 +258,13 @@ export default function HalloweenCatalog({
           <button type="button" onClick={() => setDialog('bag')}><span>→ SHOPPING CART · {bagCount}</span><strong>REVIEW YOUR CART</strong></button>
         </div>
       </header>
+
+      {campaign && (
+        <aside className="halloween-market-campaign" aria-label="Market spotlight">
+          <span>MARKET SPOTLIGHT</span>
+          <div><h2>{campaign.title}</h2><p>{campaign.message}</p></div>
+        </aside>
+      )}
 
       <div className="halloween-demo-note" role="note">
         <strong>Costume previews are for browsing only.</strong> Preview designs and bag selections are not confirmed merchant inventory or an online order. Live listings below come from approved Halloween merchants; ask the seller to confirm stock, price and delivery before paying.
@@ -296,7 +306,9 @@ export default function HalloweenCatalog({
                     {product.sizes.map(size => <button key={size} type="button" aria-pressed={chosenSize === size} onClick={() => setSizes(current => ({ ...current, [product.id]: size }))}>{size}</button>)}
                   </div>
                   <div className="halloween-card-actions">
-                    <button type="button" onClick={() => addToBag(product)}>{product.isPreview ? 'SAVE TO BAG PREVIEW' : 'ADD TO BAG'}</button>
+                    {product.isPreview
+                      ? <button type="button" onClick={() => addToBag(product)}>SAVE TO BAG PREVIEW</button>
+                      : <a href={`${origin}/shop/product/${encodeURIComponent(product.slug)}`}>VIEW LISTING &amp; ORDER</a>}
                     <button type="button" onClick={() => { setSelected(product); setRotation(0); setDialog('preview'); }}>✧ TRY IT ON</button>
                   </div>
                   {!product.isPreview && <a className="halloween-seller-link" href={`${origin}/shop/product/${encodeURIComponent(product.slug)}`}>View live seller listing →</a>}
