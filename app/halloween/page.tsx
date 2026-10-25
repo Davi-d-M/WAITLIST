@@ -16,22 +16,23 @@ export default async function HalloweenShopPage() {
     return <ShopUnavailable message="The costume catalog address is invalid. Please contact support." />;
   }
 
-  let catalog: CatalogResponse;
+  let catalog: CatalogResponse = { products: [], categories: [] };
+  let catalogError: string | undefined;
   try {
     const response = await fetch(new URL('/api/market/catalog', origin), { cache: 'no-store' });
     const result = await response.json() as CatalogResponse;
     if (!response.ok) {
       console.error('[HalloweenShop] Catalog request failed:', response.status, result.error);
-      return <ShopUnavailable message={result.error || 'The costume catalog is temporarily unavailable.'} />;
-    }
-    if (!Array.isArray(result.products) || !Array.isArray(result.categories)) {
+      catalogError = result.error || 'The costume catalog is temporarily unavailable.';
+    } else if (!Array.isArray(result.products) || !Array.isArray(result.categories)) {
       console.error('[HalloweenShop] Catalog response did not contain product and category lists.');
-      return <ShopUnavailable message="The costume catalog returned an invalid response. Please try again shortly." />;
+      catalogError = 'The costume catalog returned an invalid response. Please try again shortly.';
+    } else {
+      catalog = result;
     }
-    catalog = result;
   } catch (cause) {
     console.error('[HalloweenShop] Could not connect to the costume catalog:', cause);
-    return <ShopUnavailable message="The costume catalog could not be reached. Please try again shortly." />;
+    catalogError = 'The costume catalog could not be reached. Please try again shortly.';
   }
 
   return (
@@ -43,12 +44,7 @@ export default async function HalloweenShopPage() {
         </Link>
         <Link className="market-top-link" href="/">Join the list <span aria-hidden="true">→</span></Link>
       </nav>
-      <header className="halloween-shop-hero">
-        <p className="eyebrow">MIDNIGHT MARKET · HALLOWEEN</p>
-        <h1>Find your<br /><em>after-dark look.</em></h1>
-        <p>Browse real costumes and accessories published by approved merchants. Product availability and order details are confirmed by each seller.</p>
-      </header>
-      <HalloweenCatalog products={catalog.products} categories={catalog.categories} origin={origin} />
+      <HalloweenCatalog products={catalog.products} categories={catalog.categories} origin={origin} catalogError={catalogError} />
       <footer className="halloween-shop-footer">
         <span>Midnight Market · Costumes from local merchants</span>
         <a href={`${origin}/merchant/register`}>Sell on Midnight Market</a>

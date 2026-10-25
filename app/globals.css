@@ -53,6 +53,132 @@ button{cursor:pointer}
 .music-style-picker{display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:8px}
 .music-style-choice{min-height:62px;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:5px;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);text-align:left;transition:border-color .15s,background .15s,box-shadow .15s}
 .music-style-choice:hover{border-color:var(--primary);background:var(--primary-soft)}
+.halloween-experience{padding-bottom:54px;color:#f8f5ff}
+.halloween-drop-hero{position:relative;overflow:hidden;margin:26px 0 28px;padding:clamp(26px,5vw,64px);border:1px solid #503a6b;border-radius:20px;background:radial-gradient(ellipse at 75% 15%,#653b8c 0,transparent 42%),linear-gradient(130deg,#21102e,#100d1b 68%,#21152d)}
+.halloween-drop-hero:after{position:absolute;right:8%;top:-55px;width:270px;height:270px;border:1px solid #ffffff13;border-radius:50%;content:"";box-shadow:0 0 0 35px #ffffff08,0 0 0 70px #ffffff05;pointer-events:none}
+.halloween-drop-copy,.halloween-drop-actions,.halloween-theme-row,.halloween-search,.halloween-shortcuts{position:relative;z-index:1}
+.halloween-drop-copy{max-width:710px}
+.halloween-drop-label{color:#e7b6ff;font-size:10px;font-weight:900;letter-spacing:.22em}
+.halloween-drop-copy h1{margin:16px 0 14px;font-size:clamp(34px,6.3vw,74px);line-height:.98;letter-spacing:-.055em}
+.halloween-drop-copy h1 em{color:#f5a7ff;font-family:Georgia,serif;font-weight:500}
+.halloween-drop-copy p{max-width:550px;margin:0;color:#d4c8dd;font-size:14px;line-height:1.75}
+.halloween-drop-actions{display:flex;flex-wrap:wrap;gap:9px;margin:25px 0 28px}
+.halloween-pill{display:inline-flex;min-height:38px;align-items:center;justify-content:center;gap:9px;padding:0 14px;border:1px solid #ffffff3d;border-radius:3px;background:#ffffff0d;color:#f8f5ff;text-decoration:none;font-size:9px;font-weight:900;letter-spacing:.13em}
+.halloween-pill-light{border-color:#f5a7ff;background:#f5a7ff;color:#20102b}
+.halloween-countdown{color:#e6d5ef}
+.halloween-theme-row{display:flex;gap:7px;overflow-x:auto;padding:4px 0 12px}
+.halloween-theme-row button{flex:0 0 auto;min-height:34px;padding:0 15px;border:1px solid #ffffff30;border-radius:20px;background:#ffffff08;color:#e3d8e9;font-size:10px;font-weight:800}
+.halloween-theme-row button:hover,.halloween-theme-row button.active{border-color:#e394fa;background:#e394fa;color:#21102b}
+.halloween-search{display:block;max-width:540px;margin-top:7px}
+.halloween-search input{width:100%;height:46px;padding:0 15px;border:1px solid #ffffff35;border-radius:4px;outline:none;background:#130d1c;color:#fff;font-size:12px}
+.halloween-search input:focus{border-color:#e394fa;box-shadow:0 0 0 3px #e394fa24}
+.halloween-search input::placeholder{color:#ae9fb8}
+.halloween-shortcuts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:22px}
+.halloween-shortcuts button{display:flex;min-height:67px;flex-direction:column;align-items:flex-start;justify-content:center;gap:7px;padding:12px 14px;border:1px solid #ffffff26;border-radius:4px;background:#ffffff0a;color:#fff;text-align:left}
+.halloween-shortcuts button:hover{border-color:#e394fa;background:#ffffff12}
+.halloween-shortcuts button span{color:#d99eeb;font-size:9px;font-weight:900;letter-spacing:.1em}
+.halloween-shortcuts button strong{font-size:10px;letter-spacing:.07em}
+.halloween-demo-note{margin:0 0 23px;padding:14px 16px;border:1px solid #bb8a42;background:#fff5df;color:#59401f;font-size:11px;line-height:1.65}
+.halloween-demo-note strong{font-weight:900}
+.halloween-catalog-status{display:block;margin-top:4px;color:#874a22}
+.halloween-live-categories{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 27px}
+.halloween-live-categories>span{margin-right:5px;color:#b7a9c2;font-size:9px;font-weight:900;letter-spacing:.13em}
+.halloween-live-categories button{padding:7px 10px;border:1px solid #dad2df;border-radius:20px;background:#fff;color:#473653;font-size:10px}
+.halloween-live-categories button:hover{border-color:#743d87;color:#743d87}
+.halloween-grid-heading{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;margin:0 0 17px}
+.halloween-grid-heading>div>span{color:#bbaac7;font-size:9px;font-weight:900;letter-spacing:.18em}
+.halloween-grid-heading h2{margin:5px 0 0;color:#26172c;font-size:clamp(25px,4vw,38px);letter-spacing:-.04em}
+.halloween-grid-heading>p{margin:0;color:#786b7e;font-size:10px;text-align:right}
+.halloween-experience .halloween-product-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:17px}
+.halloween-experience .halloween-product-card{overflow:hidden;border:1px solid #e5dbe8;border-radius:8px;background:#fff;color:#24192a;box-shadow:0 6px 24px #2b11300a}
+.halloween-product-art{position:relative;display:flex;min-height:250px;aspect-ratio:1.25;flex-direction:column;justify-content:space-between;overflow:hidden;padding:13px 14px 15px;color:#fff}
+.halloween-card-photo{object-fit:cover;opacity:.82}
+.halloween-art-badges,.halloween-product-title,.halloween-size-count{position:relative;z-index:1}
+.halloween-art-badges{display:flex;flex-wrap:wrap;gap:5px}
+.halloween-art-badges span{padding:5px 7px;border:1px solid #ffffff5c;border-radius:2px;background:#150e24b8;color:#fff;font-size:8px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}
+.halloween-product-title{text-shadow:0 2px 10px #0009}
+.halloween-product-title>span{font-size:9px;font-weight:900;letter-spacing:.17em;text-transform:uppercase}
+.halloween-product-title h3{margin:4px 0 0;font-size:clamp(19px,2vw,27px);line-height:1.08}
+.halloween-size-count{position:absolute;right:12px;bottom:14px;padding:5px 7px;border-radius:2px;background:#130d1cbf;font-size:8px;font-weight:900;letter-spacing:.1em}
+.halloween-costume-illustration{position:absolute;left:50%;top:48%;width:94px;height:142px;transform:translate(-50%,-50%);filter:drop-shadow(0 12px 10px #0008)}
+.halloween-costume-illustration i{position:absolute;z-index:1;top:0;left:37px;width:22px;height:25px;border-radius:50%;background:#e4c1a7}
+.halloween-costume-illustration b{position:absolute;z-index:2;top:25px;left:18px;width:60px;height:91px;border-radius:20px 20px 9px 9px;background:linear-gradient(100deg,#111827,#58416b 55%,#171124);clip-path:polygon(22% 0,78% 0,100% 100%,0 100%)}
+.halloween-costume-illustration em{position:absolute;z-index:3;top:20px;left:9px;width:78px;height:12px;border-radius:50%;background:#d7a6ec}
+.halloween-costume-illustration span{position:absolute;top:104px;left:26px;width:43px;height:30px;border-left:10px solid #171124;border-right:10px solid #171124}
+.halloween-costume-illustration.vampire b{background:linear-gradient(100deg,#16111b,#b91c1c 55%,#210c15);clip-path:polygon(30% 0,70% 0,100% 100%,0 100%)}
+.halloween-costume-illustration.space b{background:linear-gradient(100deg,#10202c,#30b9d5 55%,#172138)}
+.halloween-costume-illustration.masquerade b{background:linear-gradient(100deg,#34240e,#d2a338 55%,#21172b)}
+.halloween-costume-illustration.hero b{background:linear-gradient(100deg,#17223a,#eb633c 55%,#352049)}
+.halloween-costume-illustration.classic b{background:linear-gradient(100deg,#f1ecf7,#c6c2d4 55%,#fff);opacity:.92}
+.halloween-card-content{padding:14px}
+.halloween-card-description{min-height:42px;margin:0;color:#746b77;font-size:10px;line-height:1.6}
+.halloween-price-fit{display:flex;align-items:flex-end;justify-content:space-between;gap:9px;margin-top:12px}
+.halloween-price-fit>div{display:flex;align-items:baseline;gap:8px}
+.halloween-price-fit strong{color:#2a1932;font-size:17px}
+.halloween-price-fit del{color:#9a8d9d;font-size:10px}
+.halloween-price-fit>span{max-width:50%;color:#8b6a91;font-size:8px;font-weight:900;letter-spacing:.08em;text-align:right}
+.halloween-fit-note{min-height:29px;margin:9px 0;color:#817887;font-size:9px;line-height:1.5}
+.halloween-size-row{display:flex;flex-wrap:wrap;gap:5px;margin:9px 0 12px}
+.halloween-size-row button{min-width:31px;height:26px;padding:0 6px;border:1px solid #ded6e2;border-radius:2px;background:#fff;color:#51445a;font-size:9px;font-weight:800}
+.halloween-size-row button[aria-pressed="true"]{border-color:#4f2761;background:#4f2761;color:#fff}
+.halloween-card-actions{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.halloween-card-actions button{min-height:35px;padding:6px;border:1px solid #52265f;background:#52265f;color:#fff;font-size:8px;font-weight:900;letter-spacing:.04em}
+.halloween-card-actions button+button{background:#fff;color:#52265f}
+.halloween-card-actions button:hover{filter:brightness(1.12)}
+.halloween-seller-link{display:inline-block;margin-top:10px;color:#5d3370;font-size:10px;font-weight:800}
+.halloween-shop-empty{border-color:#d9cbdc;border-radius:8px;background:#fff;color:#26172c}
+.halloween-shop-empty button{min-height:38px;padding:0 13px;border:0;background:#52265f;color:#fff;font-size:9px;font-weight:900;letter-spacing:.1em}
+.halloween-dialog-backdrop{position:fixed;z-index:1000;inset:0;display:grid;place-items:center;overflow:auto;padding:18px;background:#100b17d9}
+.halloween-dialog{width:min(100%,680px);max-height:min(90vh,850px);overflow:auto;border:1px solid #604569;border-radius:10px;background:#1a1222;color:#f8f5ff;box-shadow:0 25px 80px #0008}
+.halloween-dialog-header{position:sticky;z-index:2;top:0;display:flex;align-items:flex-start;justify-content:space-between;gap:15px;padding:18px 20px;border-bottom:1px solid #ffffff18;background:#1a1222}
+.halloween-dialog-header span,.halloween-preview-details>span{color:#d69ce8;font-size:8px;font-weight:900;letter-spacing:.17em}
+.halloween-dialog-header h2{margin:6px 0 0;font-size:clamp(17px,3vw,24px)}
+.halloween-dialog-header>button{width:34px;height:34px;border:1px solid #ffffff32;border-radius:50%;background:transparent;color:#fff;font-size:25px}
+.halloween-dialog-body{padding:20px}
+.halloween-dialog-body>p{margin:0 0 16px;color:#d2c7d8;font-size:12px;line-height:1.7}
+.halloween-quiz-fields{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.halloween-quiz-fields label{display:grid;gap:6px;color:#d8c8e0;font-size:9px;font-weight:900;letter-spacing:.08em}
+.halloween-quiz-fields input,.halloween-quiz-fields select{width:100%;height:42px;padding:0 10px;border:1px solid #51435a;border-radius:3px;background:#100c15;color:#fff}
+.halloween-fit-result{margin:17px 0;padding:15px;border:1px solid #7c5290;background:#ffffff0a}
+.halloween-fit-result>span{display:block;color:#d5a2e6;font-size:8px;font-weight:900;letter-spacing:.15em}
+.halloween-fit-result strong{display:block;margin:5px 0;font-size:30px}
+.halloween-fit-result p{margin:0;color:#c9bdcf;font-size:10px}
+.halloween-dialog-primary,.halloween-dialog-secondary{display:inline-flex;min-height:40px;align-items:center;justify-content:center;margin-top:15px;padding:0 15px;border:1px solid #e69eff;background:#e69eff;color:#24112d;font-size:9px;font-weight:900;letter-spacing:.09em;text-decoration:none}
+.halloween-dialog-secondary{margin-left:8px;border-color:#ffffff42;background:transparent;color:#fff}
+.halloween-photo-stage{position:relative;display:grid;min-height:250px;place-items:center;overflow:hidden;border:1px dashed #79638a;background:#100c15;color:#baaec2;text-align:center;font-size:11px}
+.halloween-photo-stage>img{object-fit:contain}
+.halloween-photo-stage>div{position:absolute;inset:0;display:grid;place-items:center;color:#fff}
+.halloween-photo-stage>div strong{padding:12px;background:#100c15a8;font-size:19px}
+.halloween-photo-upload{display:inline-flex;position:relative;min-height:40px;align-items:center;margin-top:14px;padding:0 14px;overflow:hidden;background:#e69eff;color:#24112d;font-size:9px;font-weight:900;letter-spacing:.1em;cursor:pointer}
+.halloween-photo-upload input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}
+.halloween-form-error{color:#ffb6a4!important;font-size:10px!important}
+.halloween-preview-layout{display:grid;grid-template-columns:1.1fr .9fr;gap:16px;padding:18px}
+.halloween-preview-scene{display:flex;min-height:330px;flex-direction:column;align-items:center;justify-content:flex-end;overflow:hidden;padding:15px}
+.halloween-mannequin{position:relative;width:160px;height:235px;transform-style:preserve-3d;transition:transform .2s ease}
+.mannequin-head{position:absolute;z-index:3;top:7px;left:67px;width:27px;height:34px;border-radius:50%;background:#d8b69d}
+.mannequin-hat{position:absolute;z-index:4;top:0;left:49px;width:65px;height:12px;border-radius:50%;background:#1a1124;box-shadow:0 -18px 0 -4px #231331}
+.mannequin-body{position:absolute;z-index:2;top:36px;left:43px;width:75px;height:123px;border-radius:23px 23px 14px 14px;clip-path:polygon(20% 0,80% 0,100% 100%,0 100%);box-shadow:inset -12px 0 15px #0005}
+.mannequin-cape{position:absolute;z-index:1;top:37px;left:24px;width:113px;height:143px;border-left:5px solid #ffffff55;border-right:5px solid #ffffff55;border-bottom:20px solid;clip-path:polygon(20% 0,80% 0,100% 100%,0 100%)}
+.mannequin-leg{position:absolute;top:151px;width:21px;height:72px;background:#17121d}
+.mannequin-leg.left{left:54px}.mannequin-leg.right{right:53px}
+.halloween-preview-scene>p{margin:12px 0;color:#ded0e8;font-size:8px;font-weight:900;letter-spacing:.1em;text-align:center}
+.halloween-preview-scene input{width:80%;accent-color:#e69eff}
+.halloween-preview-details{align-self:center}
+.halloween-preview-details h3{margin:8px 0;font-size:23px}
+.halloween-preview-details>strong{font-size:18px}
+.halloween-preview-details p{color:#c9bdcf;font-size:11px;line-height:1.6}
+.halloween-bag-lines{border-top:1px solid #ffffff20}
+.halloween-bag-line{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 0;border-bottom:1px solid #ffffff20}
+.halloween-bag-line>div:first-child{display:flex;flex-direction:column;gap:4px}
+.halloween-bag-line strong{font-size:12px}
+.halloween-bag-line span,.halloween-bag-line a{color:#ccbdd4;font-size:9px}
+.halloween-bag-line a{color:#e4a1f5}
+.halloween-bag-line>div:last-child{display:flex;align-items:center;gap:8px}
+.halloween-bag-line button{width:27px;height:27px;border:1px solid #ffffff32;background:transparent;color:#fff}
+.halloween-bag-total{display:flex;justify-content:space-between;margin-top:14px;color:#e2d4e9;font-size:11px}
+.halloween-bag-total strong{color:#fff;font-size:16px}
+@media(max-width:900px){.halloween-experience .halloween-product-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:620px){.halloween-drop-hero{margin:16px 0 20px;padding:25px 17px}.halloween-drop-actions{gap:6px}.halloween-pill{min-height:34px;padding:0 9px;font-size:8px}.halloween-shortcuts{grid-template-columns:1fr}.halloween-shortcuts button{min-height:53px}.halloween-grid-heading{align-items:flex-start;flex-direction:column}.halloween-grid-heading>p{text-align:left}.halloween-experience .halloween-product-grid{grid-template-columns:1fr}.halloween-product-art{min-height:255px}.halloween-preview-layout{grid-template-columns:1fr}.halloween-preview-scene{min-height:280px}.halloween-dialog-backdrop{padding:8px}.halloween-quiz-fields{grid-template-columns:1fr 1fr}.halloween-dialog-body{padding:15px}}
 .music-style-choice:focus-visible{outline:3px solid color-mix(in srgb,var(--primary) 28%,transparent);outline-offset:2px}
 .music-style-choice.selected{border-color:var(--primary);background:var(--primary-soft);box-shadow:inset 0 0 0 1px var(--primary)}
 .music-style-choice span{font-size:12px;font-weight:800}
